@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 import {
   Car,
   AlertTriangle,
@@ -12,6 +14,8 @@ import {
   TrendingDown,
   Clock,
   Shield,
+  Bell,
+  RefreshCw,
 } from "lucide-react";
 import {
   ChartContainer,
@@ -23,13 +27,13 @@ import {
   Area,
   XAxis,
   YAxis,
-  ResponsiveContainer,
   PieChart,
   Pie,
   Cell,
   BarChart,
   Bar,
 } from "recharts";
+import LocationMap from "@/components/LocationMap";
 
 interface DashboardStats {
   totalVehicles: number;
@@ -39,6 +43,7 @@ interface DashboardStats {
   activeGates: number;
   totalGates: number;
   todayEntries: number;
+  resolvedToday: number;
 }
 
 const mockViolationTrend = [
@@ -52,11 +57,11 @@ const mockViolationTrend = [
 ];
 
 const mockViolationTypes = [
-  { name: "Helmet", value: 35, color: "hsl(var(--chart-1))" },
-  { name: "Seatbelt", value: 25, color: "hsl(var(--chart-2))" },
-  { name: "Triple Riding", value: 20, color: "hsl(var(--chart-3))" },
-  { name: "Mobile Phone", value: 15, color: "hsl(var(--chart-4))" },
-  { name: "Other", value: 5, color: "hsl(var(--chart-5))" },
+  { name: "Helmet", value: 35, color: "hsl(215, 70%, 45%)" },
+  { name: "Seatbelt", value: 25, color: "hsl(145, 60%, 40%)" },
+  { name: "Triple Riding", value: 20, color: "hsl(40, 90%, 50%)" },
+  { name: "Mobile Phone", value: 15, color: "hsl(0, 65%, 50%)" },
+  { name: "Other", value: 5, color: "hsl(280, 60%, 50%)" },
 ];
 
 const mockHourlyTraffic = [
@@ -85,28 +90,44 @@ export default function Dashboard() {
     activeGates: 0,
     totalGates: 0,
     todayEntries: 0,
+    resolvedToday: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState(new Date());
+
+  // Enable real-time notifications
+  useRealtimeNotifications({
+    onNewViolation: () => fetchDashboardStats(),
+    onNewGateEntry: () => fetchDashboardStats(),
+  });
 
   useEffect(() => {
     fetchDashboardStats();
+    // Refresh stats every 30 seconds
+    const interval = setInterval(fetchDashboardStats, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchDashboardStats = async () => {
     try {
+      const today = new Date().toISOString().split("T")[0];
+      
       const [
         vehiclesRes,
         violationsRes,
+        resolvedRes,
         camerasRes,
         gatesRes,
         entriesRes,
       ] = await Promise.all([
         supabase.from("vehicles").select("id", { count: "exact", head: true }),
         supabase.from("violations").select("id", { count: "exact", head: true }).is("resolved_at", null),
+        supabase.from("violations").select("id", { count: "exact", head: true })
+          .gte("resolved_at", today),
         supabase.from("cameras").select("id, status"),
         supabase.from("gates").select("id, is_active"),
         supabase.from("gate_entry_logs").select("id", { count: "exact", head: true })
-          .gte("logged_at", new Date().toISOString().split("T")[0]),
+          .gte("logged_at", today),
       ]);
 
       const onlineCameras = camerasRes.data?.filter((c) => c.status === "online").length || 0;
@@ -120,7 +141,9 @@ export default function Dashboard() {
         activeGates,
         totalGates: gatesRes.data?.length || 0,
         todayEntries: entriesRes.count || 0,
+        resolvedToday: resolvedRes.count || 0,
       });
+      setLastUpdated(new Date());
     } catch (error) {
       console.error("Error fetching dashboard stats:", error);
     } finally {
@@ -136,6 +159,8 @@ export default function Dashboard() {
       trend: "+12%",
       trendUp: true,
       description: "Registered in system",
+      color: "text-blue-600",
+      bgColor: "bg-blue-50",
     },
     {
       title: "Active Violations",
@@ -143,8 +168,10 @@ export default function Dashboard() {
       icon: AlertTriangle,
       trend: "-5%",
       trendUp: false,
-      description: "Pending resolution",
+      description: `${stats.resolvedToday} resolved today`,
       alert: stats.activeViolations > 10,
+      color: "text-red-600",
+      bgColor: "bg-red-50",
     },
     {
       title: "Cameras Online",
@@ -152,6 +179,8 @@ export default function Dashboard() {
       icon: Camera,
       progress: stats.totalCameras ? (stats.onlineCameras / stats.totalCameras) * 100 : 0,
       description: "Active surveillance",
+      color: "text-green-600",
+      bgColor: "bg-green-50",
     },
     {
       title: "Today's Entries",
@@ -159,7 +188,9 @@ export default function Dashboard() {
       icon: DoorOpen,
       trend: "+8%",
       trendUp: true,
-      description: "Gate entries today",
+      description: `${stats.activeGates} gates active`,
+      color: "text-purple-600",
+      bgColor: "bg-purple-50",
     },
   ];
 
@@ -173,10 +204,28 @@ export default function Dashboard() {
             Real-time overview of traffic surveillance system
           </p>
         </div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Clock className="h-4 w-4" />
-          Last updated: {new Date().toLocaleTimeString()}
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="sm" onClick={fetchDashboardStats}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Clock className="h-4 w-4" />
+            {lastUpdated.toLocaleTimeString()}
+          </div>
         </div>
+      </div>
+
+      {/* Real-time indicator */}
+      <div className="flex items-center gap-2 text-sm">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-50 text-green-700 border border-green-200">
+          <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+          Real-time updates enabled
+        </div>
+        <Badge variant="outline" className="gap-1">
+          <Bell className="h-3 w-3" />
+          Notifications active
+        </Badge>
       </div>
 
       {/* Stats cards */}
@@ -187,7 +236,9 @@ export default function Dashboard() {
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {stat.title}
               </CardTitle>
-              <stat.icon className={`h-4 w-4 ${stat.alert ? "text-destructive" : "text-muted-foreground"}`} />
+              <div className={`p-2 rounded-lg ${stat.bgColor}`}>
+                <stat.icon className={`h-4 w-4 ${stat.color}`} />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stat.value}</div>
@@ -205,7 +256,7 @@ export default function Dashboard() {
                 </div>
               )}
               {stat.progress !== undefined && (
-                <Progress value={stat.progress} className="mt-2 h-1" />
+                <Progress value={stat.progress} className="mt-2 h-1.5" />
               )}
               <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
             </CardContent>
@@ -224,15 +275,20 @@ export default function Dashboard() {
           <CardContent>
             <ChartContainer config={chartConfig} className="h-[250px]">
               <AreaChart data={mockViolationTrend}>
+                <defs>
+                  <linearGradient id="violationGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(215, 70%, 45%)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="hsl(215, 70%, 45%)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
                 <XAxis dataKey="day" tickLine={false} axisLine={false} />
                 <YAxis tickLine={false} axisLine={false} />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Area
                   type="monotone"
                   dataKey="violations"
-                  stroke="hsl(var(--chart-1))"
-                  fill="hsl(var(--chart-1))"
-                  fillOpacity={0.2}
+                  stroke="hsl(215, 70%, 45%)"
+                  fill="url(#violationGradient)"
                   strokeWidth={2}
                 />
               </AreaChart>
@@ -247,14 +303,14 @@ export default function Dashboard() {
             <CardDescription>Distribution by category</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="h-[250px]">
+            <ChartContainer config={chartConfig} className="h-[200px]">
               <PieChart>
                 <Pie
                   data={mockViolationTypes}
                   cx="50%"
                   cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
+                  innerRadius={50}
+                  outerRadius={70}
                   paddingAngle={2}
                   dataKey="value"
                 >
@@ -265,7 +321,7 @@ export default function Dashboard() {
                 <ChartTooltip content={<ChartTooltipContent />} />
               </PieChart>
             </ChartContainer>
-            <div className="flex flex-wrap gap-2 mt-4 justify-center">
+            <div className="flex flex-wrap gap-2 mt-2 justify-center">
               {mockViolationTypes.map((type) => (
                 <Badge key={type.name} variant="outline" className="text-xs">
                   <span
@@ -280,36 +336,52 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Traffic flow chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Today's Traffic Flow</CardTitle>
-          <CardDescription>Hourly gate entries and exits</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ChartContainer config={chartConfig} className="h-[250px]">
-            <BarChart data={mockHourlyTraffic}>
-              <XAxis dataKey="hour" tickLine={false} axisLine={false} tickFormatter={(v) => `${v}:00`} />
-              <YAxis tickLine={false} axisLine={false} />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <Bar dataKey="entries" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="exits" fill="hsl(var(--chart-4))" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ChartContainer>
-        </CardContent>
-      </Card>
+      {/* Map and traffic flow */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* Location map */}
+        <LocationMap />
 
-      {/* Quick actions */}
+        {/* Traffic flow chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Today's Traffic Flow</CardTitle>
+            <CardDescription>Hourly gate entries and exits</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer config={chartConfig} className="h-[300px]">
+              <BarChart data={mockHourlyTraffic}>
+                <XAxis dataKey="hour" tickLine={false} axisLine={false} tickFormatter={(v) => `${v}:00`} />
+                <YAxis tickLine={false} axisLine={false} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Bar dataKey="entries" fill="hsl(145, 60%, 40%)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="exits" fill="hsl(0, 65%, 50%)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ChartContainer>
+            <div className="flex justify-center gap-4 mt-2">
+              <div className="flex items-center gap-2 text-sm">
+                <div className="h-3 w-3 rounded" style={{ backgroundColor: "hsl(145, 60%, 40%)" }} />
+                Entries
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <div className="h-3 w-3 rounded" style={{ backgroundColor: "hsl(0, 65%, 50%)" }} />
+                Exits
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* System status */}
       <Card>
         <CardHeader>
           <CardTitle>System Status</CardTitle>
           <CardDescription>Current operational status</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap gap-6">
             <div className="flex items-center gap-2">
               <div className="h-3 w-3 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-sm">All systems operational</span>
+              <span className="text-sm font-medium">All systems operational</span>
             </div>
             <div className="flex items-center gap-2">
               <Shield className="h-4 w-4 text-primary" />
