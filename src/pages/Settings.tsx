@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTheme } from "next-themes";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,11 +9,13 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { User, Bell, Shield, Palette } from "lucide-react";
+import { User, Bell, Shield, Palette, Sun, Moon, Monitor } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function Settings() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { theme, setTheme } = useTheme();
   const [loading, setLoading] = useState(false);
 
   const [profile, setProfile] = useState({
@@ -215,14 +218,66 @@ export default function Settings() {
           <Card>
             <CardHeader>
               <CardTitle>Appearance</CardTitle>
-              <CardDescription>Customize the look and feel</CardDescription>
+              <CardDescription>Customize the look and feel of the application</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
                 <Label>Theme</Label>
                 <p className="text-sm text-muted-foreground">
-                  Theme switching coming soon. Currently using the Government/Official theme.
+                  Select your preferred color scheme
                 </p>
+                <div className="grid grid-cols-3 gap-4">
+                  <button
+                    onClick={() => setTheme("light")}
+                    className={cn(
+                      "flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all hover:bg-accent",
+                      theme === "light" ? "border-primary bg-accent" : "border-muted"
+                    )}
+                  >
+                    <div className="h-12 w-12 rounded-full bg-white border flex items-center justify-center shadow-sm">
+                      <Sun className="h-6 w-6 text-yellow-500" />
+                    </div>
+                    <span className="text-sm font-medium">Light</span>
+                  </button>
+                  <button
+                    onClick={() => setTheme("dark")}
+                    className={cn(
+                      "flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all hover:bg-accent",
+                      theme === "dark" ? "border-primary bg-accent" : "border-muted"
+                    )}
+                  >
+                    <div className="h-12 w-12 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center">
+                      <Moon className="h-6 w-6 text-slate-300" />
+                    </div>
+                    <span className="text-sm font-medium">Dark</span>
+                  </button>
+                  <button
+                    onClick={() => setTheme("system")}
+                    className={cn(
+                      "flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all hover:bg-accent",
+                      theme === "system" ? "border-primary bg-accent" : "border-muted"
+                    )}
+                  >
+                    <div className="h-12 w-12 rounded-full bg-gradient-to-br from-white to-slate-900 border flex items-center justify-center">
+                      <Monitor className="h-6 w-6 text-primary" />
+                    </div>
+                    <span className="text-sm font-medium">System</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t">
+                <h4 className="font-medium mb-2">Preview</h4>
+                <div className="flex gap-4">
+                  <div className="flex-1 p-4 rounded-lg bg-card border">
+                    <div className="h-4 w-3/4 rounded bg-muted mb-2" />
+                    <div className="h-3 w-1/2 rounded bg-muted" />
+                  </div>
+                  <div className="flex-1 p-4 rounded-lg bg-primary text-primary-foreground">
+                    <div className="h-4 w-3/4 rounded bg-primary-foreground/20 mb-2" />
+                    <div className="h-3 w-1/2 rounded bg-primary-foreground/20" />
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
