@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import GlobalVehicleSearch from "@/components/GlobalVehicleSearch";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -194,7 +195,7 @@ export default function DashboardLayout() {
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
         {/* Top header */}
-        <header className="h-16 border-b bg-card flex items-center justify-between px-6 sticky top-0 z-30">
+        <header className="h-16 border-b bg-card flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
@@ -204,11 +205,17 @@ export default function DashboardLayout() {
             >
               <Menu className="h-5 w-5" />
             </Button>
-            <div>
+            <div className="hidden md:block">
               <h1 className="text-lg font-semibold">Traffic Surveillance System</h1>
-              <p className="text-xs text-muted-foreground hidden sm:block">Government of India • Ministry of Road Transport</p>
+              <p className="text-xs text-muted-foreground hidden lg:block">Government of India • Ministry of Road Transport</p>
             </div>
           </div>
+          
+          {/* Global Vehicle Search */}
+          <div className="flex-1 max-w-md mx-4 hidden sm:block">
+            <GlobalVehicleSearch />
+          </div>
+          
           <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
