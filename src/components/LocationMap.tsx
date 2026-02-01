@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Camera, DoorOpen } from "lucide-react";
+import { Camera } from "lucide-react";
 
 type CameraType = Tables<"cameras">;
 type GateType = Tables<"gates">;
@@ -125,6 +125,9 @@ export default function LocationMap({ className }: LocationMapProps) {
     );
   }
 
+  // Memoize key to prevent re-renders causing context issues
+  const mapKey = useMemo(() => `map-${defaultCenter[0]}-${defaultCenter[1]}`, [defaultCenter]);
+
   return (
     <Card className={className}>
       <CardHeader className="pb-2">
@@ -136,41 +139,13 @@ export default function LocationMap({ className }: LocationMapProps) {
       <CardContent className="p-0">
         <div className="h-[400px] rounded-b-lg overflow-hidden">
           <MapContainer
+            key={mapKey}
             center={defaultCenter}
             zoom={15}
             style={{ height: "100%", width: "100%" }}
             scrollWheelZoom={true}
           >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            <MapBoundsAdjuster cameras={cameras} gates={gates} />
-            
-            {/* Camera markers */}
-            {camerasWithCoords.map((camera) => (
-              <Marker
-                key={camera.id}
-                position={[Number(camera.latitude), Number(camera.longitude)]}
-                icon={camera.status === "online" ? cameraOnlineIcon : cameraOfflineIcon}
-              >
-                <Popup>
-                  <div className="space-y-2">
-                    <div className="font-semibold flex items-center gap-2">
-                      <Camera className="h-4 w-4" />
-                      {camera.name}
-                    </div>
-                    <p className="text-sm text-muted-foreground">{camera.location}</p>
-                    <Badge
-                      variant={camera.status === "online" ? "default" : "destructive"}
-                      className="text-xs"
-                    >
-                      {camera.status}
-                    </Badge>
-                  </div>
-                </Popup>
-              </Marker>
-            ))}
+            <MapContent cameras={cameras} camerasWithCoords={camerasWithCoords} gates={gates} />
           </MapContainer>
         </div>
         
@@ -191,5 +166,51 @@ export default function LocationMap({ className }: LocationMapProps) {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+// Separate component for map content to avoid context consumer issues
+function MapContent({ 
+  cameras, 
+  camerasWithCoords, 
+  gates 
+}: { 
+  cameras: CameraType[]; 
+  camerasWithCoords: CameraType[];
+  gates: GateType[];
+}) {
+  return (
+    <>
+      <TileLayer
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+      <MapBoundsAdjuster cameras={cameras} gates={gates} />
+      
+      {/* Camera markers */}
+      {camerasWithCoords.map((camera) => (
+        <Marker
+          key={camera.id}
+          position={[Number(camera.latitude), Number(camera.longitude)]}
+          icon={camera.status === "online" ? cameraOnlineIcon : cameraOfflineIcon}
+        >
+          <Popup>
+            <div className="space-y-2">
+              <div className="font-semibold flex items-center gap-2">
+                <Camera className="h-4 w-4" />
+                {camera.name}
+              </div>
+              <p className="text-sm text-muted-foreground">{camera.location}</p>
+              <Badge
+                variant={camera.status === "online" ? "default" : "destructive"}
+                className="text-xs"
+              >
+                {camera.status}
+              </Badge>
+            </div>
+          </Popup>
+        </Marker>
+      ))}
+    </>
   );
 }
