@@ -115,6 +115,9 @@ export default function LocationMap({ className }: LocationMapProps) {
     ? [Number(camerasWithCoords[0].latitude), Number(camerasWithCoords[0].longitude)]
     : [19.076, 72.8777]; // Mumbai default
 
+  // Memoize key to prevent re-renders causing context issues - MUST be before any conditional returns
+  const mapKey = useMemo(() => `map-${defaultCenter[0]}-${defaultCenter[1]}`, [defaultCenter]);
+
   if (loading) {
     return (
       <Card className={className}>
@@ -124,9 +127,6 @@ export default function LocationMap({ className }: LocationMapProps) {
       </Card>
     );
   }
-
-  // Memoize key to prevent re-renders causing context issues
-  const mapKey = useMemo(() => `map-${defaultCenter[0]}-${defaultCenter[1]}`, [defaultCenter]);
 
   return (
     <Card className={className}>
