@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Leaflet CSS is imported in the component */
+
 /* Government/Official Design System - Professional blues, formal typography */
 
 @layer base {
@@ -39,19 +41,19 @@
     --info: 200 80% 45%;
     --info-foreground: 0 0% 100%;
 
-    --border: 214 20% 85%;
-    --input: 214 20% 85%;
+    --border: 214 20% 88%;
+    --input: 214 20% 88%;
     --ring: 215 70% 35%;
 
-    --radius: 0.375rem;
+    --radius: 0.5rem;
 
-    --sidebar-background: 215 30% 18%;
+    --sidebar-background: 215 30% 15%;
     --sidebar-foreground: 210 20% 95%;
-    --sidebar-primary: 200 80% 60%;
+    --sidebar-primary: 200 85% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 30% 25%;
+    --sidebar-accent: 215 30% 22%;
     --sidebar-accent-foreground: 210 20% 95%;
-    --sidebar-border: 215 25% 25%;
+    --sidebar-border: 215 25% 22%;
     --sidebar-ring: 200 80% 60%;
 
     --chart-1: 215 70% 45%;
@@ -62,25 +64,25 @@
   }
 
   .dark {
-    --background: 215 30% 10%;
+    --background: 215 30% 8%;
     --foreground: 210 20% 95%;
 
-    --card: 215 30% 13%;
+    --card: 215 30% 11%;
     --card-foreground: 210 20% 95%;
 
-    --popover: 215 30% 13%;
+    --popover: 215 30% 11%;
     --popover-foreground: 210 20% 95%;
 
     --primary: 200 80% 55%;
     --primary-foreground: 215 30% 10%;
 
-    --secondary: 215 25% 20%;
+    --secondary: 215 25% 18%;
     --secondary-foreground: 210 20% 90%;
 
-    --muted: 215 25% 18%;
+    --muted: 215 25% 15%;
     --muted-foreground: 210 15% 60%;
 
-    --accent: 215 25% 22%;
+    --accent: 215 25% 20%;
     --accent-foreground: 210 20% 95%;
 
     --destructive: 0 60% 45%;
@@ -95,19 +97,94 @@
     --info: 200 75% 50%;
     --info-foreground: 0 0% 100%;
 
-    --border: 215 25% 22%;
-    --input: 215 25% 22%;
+    --border: 215 25% 18%;
+    --input: 215 25% 18%;
     --ring: 200 80% 55%;
 
-    --sidebar-background: 215 35% 8%;
+    --sidebar-background: 215 35% 6%;
     --sidebar-foreground: 210 20% 95%;
     --sidebar-primary: 200 80% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 30% 15%;
+    --sidebar-accent: 215 30% 12%;
     --sidebar-accent-foreground: 210 20% 95%;
-    --sidebar-border: 215 25% 15%;
+    --sidebar-border: 215 25% 12%;
     --sidebar-ring: 200 80% 60%;
   }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer components {
+  .govt-header {
+    @apply bg-primary text-primary-foreground py-2 px-4 text-sm font-medium;
+  }
+  
+  .govt-card {
+    @apply bg-card rounded-lg border shadow-sm hover:shadow-md transition-shadow;
+  }
+  
+  .govt-badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium;
+  }
+
+  .stat-card {
+    @apply bg-card rounded-xl border p-6 hover:shadow-lg transition-all duration-200;
+  }
+}
+
+/* Leaflet map customizations */
+.leaflet-container {
+  font-family: inherit;
+}
+
+.leaflet-popup-content-wrapper {
+  @apply rounded-lg shadow-lg;
+}
+
+.leaflet-popup-content {
+  margin: 12px 16px;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-muted/50 rounded-full;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-muted-foreground/20 rounded-full hover:bg-muted-foreground/30;
+}
+
+/* Smooth animations */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out;
 }
 
 @layer base {
