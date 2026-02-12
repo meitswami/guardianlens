@@ -110,9 +110,7 @@
     --sidebar-border: 215 25% 12%;
     --sidebar-ring: 200 80% 60%;
   }
-}
 
-@layer base {
   * {
     @apply border-border;
   }
@@ -185,32 +183,4 @@
 
 .animate-slide-in {
   animation: slideIn 0.3s ease-out;
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-
-  body {
-    @apply bg-background text-foreground font-sans antialiased;
-  }
-
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-semibold tracking-tight;
-  }
-}
-
-@layer utilities {
-  .govt-header {
-    @apply bg-primary text-primary-foreground py-2 px-4 text-sm font-medium;
-  }
-  
-  .govt-card {
-    @apply bg-card rounded-md border shadow-sm;
-  }
-  
-  .govt-badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium;
-  }
 }
