@@ -1,73 +1,52 @@
-# Welcome to your Lovable project
+# GuardianLens – Traffic Surveillance System
 
-## Project info
+A comprehensive government traffic surveillance and monitoring platform built for the Ministry of Road Transport, Government of India.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Overview
 
-## How can I edit this code?
+GuardianLens provides real-time traffic monitoring, vehicle tracking, violation detection, and gate access management through an integrated dashboard.
 
-There are several ways of editing your application.
+## Features
 
-**Use Lovable**
+- **Dashboard** – Real-time overview of system activity with live stats, charts, and map visualization
+- **Vehicle Management** – Track registered vehicles, manage blacklists, and organize vehicles into groups
+- **Violation Detection** – Monitor and manage traffic violations (helmet, seatbelt, triple riding, mobile phone usage, wrong way, red light, illegal parking, overloading)
+- **Camera Management** – Configure and monitor ANPR/surveillance cameras with RTSP feeds
+- **Gate & Access Control** – Manage entry/exit gates with time-based, whitelist, and blacklist access rules
+- **User Management** – Role-based access control (Admin, Operator, Viewer)
+- **Reports** – Generate and export reports (PDF/Excel)
+- **Real-time Notifications** – Live alerts for new violations and gate entries
+- **Global Vehicle Search** – Instant plate number lookup across the system
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## Tech Stack
 
-Changes made via Lovable will be committed automatically to this repo.
+- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui
+- **Backend**: Lovable Cloud (Supabase) – PostgreSQL, Auth, Realtime, Edge Functions
+- **Maps**: Leaflet
+- **Charts**: Recharts
+- **Reports**: jsPDF, xlsx
 
-**Use your preferred IDE**
+## Roles & Permissions
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+| Role     | Access                                              |
+| -------- | --------------------------------------------------- |
+| Admin    | Full access – manage users, cameras, gates, data    |
+| Operator | Manage vehicles, violations, assigned cameras/gates |
+| Viewer   | Read-only access to dashboards and reports          |
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## Getting Started
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
 git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+cd guardianlens
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Deployment
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Published at: [guardianlens.lovable.app](https://guardianlens.lovable.app)
 
-**Use GitHub Codespaces**
+## License
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Proprietary – Government of India
