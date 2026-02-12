@@ -30,7 +30,10 @@ import {
   ChevronLeft,
   Bell,
   Activity,
+  Sun,
+  Moon,
 } from "lucide-react";
+import { useTheme } from "@/components/ThemeProvider";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -48,6 +51,7 @@ export default function DashboardLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
   const { user, userRole, signOut } = useAuth();
+  const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -217,6 +221,14 @@ export default function DashboardLayout() {
           </div>
           
           <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative">
