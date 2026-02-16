@@ -23,13 +23,19 @@ import {
   Settings,
   LogOut,
   Activity,
+  Upload,
+  IndianRupee,
+  Receipt,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
+  { icon: Upload, label: "Upload & Process", path: "/dashboard/upload" },
   { icon: Car, label: "Vehicles", path: "/dashboard/vehicles" },
   { icon: AlertTriangle, label: "Violations", path: "/dashboard/violations" },
+  { icon: Receipt, label: "eChallans", path: "/dashboard/challans" },
+  { icon: IndianRupee, label: "Fines Master", path: "/dashboard/fines" },
   { icon: Camera, label: "Cameras", path: "/dashboard/cameras" },
   { icon: DoorOpen, label: "Gates & Access", path: "/dashboard/gates" },
   { icon: Users, label: "Users", path: "/dashboard/users", adminOnly: true },

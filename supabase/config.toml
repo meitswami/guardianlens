@@ -1,1 +1,19 @@
 project_id = "cuaopldsodeuynlttjno"
+
+[functions.process-evidence]
+verify_jwt = false
+
+[functions.vehicle-lookup]
+verify_jwt = false
+
+[functions.create-challan]
+verify_jwt = false
+
+[functions.public-challan]
+verify_jwt = false
+
+[functions.send-challan-sms]
+verify_jwt = false
+
+[functions.razorpay-payment]
+verify_jwt = false

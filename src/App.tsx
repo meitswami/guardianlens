@@ -19,6 +19,10 @@ import Users from "./pages/Users";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import UploadProcess from "./pages/UploadProcess";
+import FinesMaster from "./pages/FinesMaster";
+import Challans from "./pages/Challans";
+import PublicChallan from "./pages/PublicChallan";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +39,7 @@ const App = () => (
               <Route path="/" element={<Navigate to="/login" replace />} />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
+              <Route path="/challan" element={<PublicChallan />} />
 
               {/* Protected dashboard routes */}
               <Route
@@ -48,6 +53,9 @@ const App = () => (
                 <Route index element={<Dashboard />} />
                 <Route path="vehicles" element={<Vehicles />} />
                 <Route path="violations" element={<Violations />} />
+                <Route path="upload" element={<UploadProcess />} />
+                <Route path="fines" element={<FinesMaster />} />
+                <Route path="challans" element={<Challans />} />
                 <Route path="cameras" element={<Cameras />} />
                 <Route path="gates" element={<Gates />} />
                 <Route
