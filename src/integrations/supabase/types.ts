@@ -56,6 +56,248 @@ export type Database = {
         }
         Relationships: []
       }
+      challan_payments: {
+        Row: {
+          amount: number
+          challan_id: string
+          created_at: string
+          gateway_order_id: string | null
+          gateway_payment_id: string | null
+          gateway_signature: string | null
+          id: string
+          metadata: Json | null
+          payer_email: string | null
+          payer_name: string | null
+          payer_phone: string | null
+          payment_gateway: string | null
+          payment_method: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          challan_id: string
+          created_at?: string
+          gateway_order_id?: string | null
+          gateway_payment_id?: string | null
+          gateway_signature?: string | null
+          id?: string
+          metadata?: Json | null
+          payer_email?: string | null
+          payer_name?: string | null
+          payer_phone?: string | null
+          payment_gateway?: string | null
+          payment_method?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          challan_id?: string
+          created_at?: string
+          gateway_order_id?: string | null
+          gateway_payment_id?: string | null
+          gateway_signature?: string | null
+          id?: string
+          metadata?: Json | null
+          payer_email?: string | null
+          payer_name?: string | null
+          payer_phone?: string | null
+          payment_gateway?: string | null
+          payment_method?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challan_payments_challan_id_fkey"
+            columns: ["challan_id"]
+            isOneToOne: false
+            referencedRelation: "challans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      challans: {
+        Row: {
+          ai_detection_data: Json | null
+          challan_number: string
+          created_at: string
+          description: string | null
+          due_date: string | null
+          evidence_urls: string[] | null
+          fine_amount: number
+          id: string
+          image_url: string | null
+          issued_at: string
+          issued_by: string | null
+          owner_address: string | null
+          owner_name: string | null
+          owner_phone: string | null
+          payment_amount: number | null
+          payment_date: string | null
+          payment_id: string | null
+          payment_method: string | null
+          payment_status: string
+          plate_number: string
+          public_token: string
+          resolved_at: string | null
+          rto_office: string | null
+          severity: string | null
+          sms_sent: boolean | null
+          sms_sent_at: string | null
+          state: string
+          status: string
+          updated_at: string
+          vehicle_color: string | null
+          vehicle_id: string | null
+          vehicle_lookup_data: Json | null
+          vehicle_make: string | null
+          vehicle_model: string | null
+          vehicle_type: string | null
+          video_url: string | null
+          violation_id: string | null
+          violation_label: string
+          violation_type: string
+        }
+        Insert: {
+          ai_detection_data?: Json | null
+          challan_number: string
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          evidence_urls?: string[] | null
+          fine_amount?: number
+          id?: string
+          image_url?: string | null
+          issued_at?: string
+          issued_by?: string | null
+          owner_address?: string | null
+          owner_name?: string | null
+          owner_phone?: string | null
+          payment_amount?: number | null
+          payment_date?: string | null
+          payment_id?: string | null
+          payment_method?: string | null
+          payment_status?: string
+          plate_number: string
+          public_token?: string
+          resolved_at?: string | null
+          rto_office?: string | null
+          severity?: string | null
+          sms_sent?: boolean | null
+          sms_sent_at?: string | null
+          state: string
+          status?: string
+          updated_at?: string
+          vehicle_color?: string | null
+          vehicle_id?: string | null
+          vehicle_lookup_data?: Json | null
+          vehicle_make?: string | null
+          vehicle_model?: string | null
+          vehicle_type?: string | null
+          video_url?: string | null
+          violation_id?: string | null
+          violation_label: string
+          violation_type: string
+        }
+        Update: {
+          ai_detection_data?: Json | null
+          challan_number?: string
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          evidence_urls?: string[] | null
+          fine_amount?: number
+          id?: string
+          image_url?: string | null
+          issued_at?: string
+          issued_by?: string | null
+          owner_address?: string | null
+          owner_name?: string | null
+          owner_phone?: string | null
+          payment_amount?: number | null
+          payment_date?: string | null
+          payment_id?: string | null
+          payment_method?: string | null
+          payment_status?: string
+          plate_number?: string
+          public_token?: string
+          resolved_at?: string | null
+          rto_office?: string | null
+          severity?: string | null
+          sms_sent?: boolean | null
+          sms_sent_at?: string | null
+          state?: string
+          status?: string
+          updated_at?: string
+          vehicle_color?: string | null
+          vehicle_id?: string | null
+          vehicle_lookup_data?: Json | null
+          vehicle_make?: string | null
+          vehicle_model?: string | null
+          vehicle_type?: string | null
+          video_url?: string | null
+          violation_id?: string | null
+          violation_label?: string
+          violation_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challans_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "challans_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "violations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fines_master: {
+        Row: {
+          created_at: string
+          description: string | null
+          fine_amount: number
+          id: string
+          repeat_fine_amount: number | null
+          section_reference: string | null
+          state: string
+          updated_at: string
+          violation_label: string
+          violation_type: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          fine_amount?: number
+          id?: string
+          repeat_fine_amount?: number | null
+          section_reference?: string | null
+          state: string
+          updated_at?: string
+          violation_label: string
+          violation_type: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          fine_amount?: number
+          id?: string
+          repeat_fine_amount?: number | null
+          section_reference?: string | null
+          state?: string
+          updated_at?: string
+          violation_label?: string
+          violation_type?: string
+        }
+        Relationships: []
+      }
       gate_access_rules: {
         Row: {
           created_at: string
@@ -233,6 +475,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      processing_queue: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error: string | null
+          file_type: string
+          file_url: string
+          id: string
+          priority: number | null
+          processing_started_at: string | null
+          result: Json | null
+          retry_count: number | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          file_type?: string
+          file_url: string
+          id?: string
+          priority?: number | null
+          processing_started_at?: string | null
+          result?: Json | null
+          retry_count?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          file_type?: string
+          file_url?: string
+          id?: string
+          priority?: number | null
+          processing_started_at?: string | null
+          result?: Json | null
+          retry_count?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
