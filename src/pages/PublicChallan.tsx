@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
+import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { AlertTriangle, Loader2, Shield, Printer, Download } from "lucide-react";
+import jsPDF from "jspdf";
 
 interface ChallanData {
   challan_number: string;
@@ -37,6 +39,8 @@ export default function PublicChallan() {
   const [paying, setPaying] = useState(false);
   const slipRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  const publicUrl = `${window.location.origin}/challan?token=${token}`;
 
   useEffect(() => {
     if (!token) { setError("Invalid challan link"); setLoading(false); return; }
@@ -110,6 +114,108 @@ export default function PublicChallan() {
 
   const handlePrint = () => window.print();
 
+  const handleDownloadPDF = () => {
+    if (!challan) return;
+    const doc = new jsPDF({ unit: "mm", format: [100, 200] });
+    const w = 100;
+    let y = 8;
+
+    // Header
+    doc.setFillColor(30, 64, 175);
+    doc.rect(0, 0, w, 22, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text("eCHALLAN", w / 2, y + 4, { align: "center" });
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Government of ${challan.state}`, w / 2, y + 10, { align: "center" });
+    doc.text("Traffic Enforcement Department", w / 2, y + 14, { align: "center" });
+    y = 28;
+
+    // Challan number & status
+    doc.setTextColor(30, 30, 30);
+    doc.setFontSize(7);
+    doc.text("Challan No.", 8, y);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.text(challan.challan_number, 8, y + 5);
+    const isPaid = challan.payment_status === "paid";
+    doc.setFontSize(8);
+    doc.setTextColor(isPaid ? 16 : 185, isPaid ? 120 : 28, isPaid ? 80 : 28);
+    doc.text(isPaid ? "✓ PAID" : "UNPAID", w - 8, y + 3, { align: "right" });
+    y += 14;
+
+    // Dashed line
+    doc.setDrawColor(200);
+    doc.setLineDashPattern([2, 2], 0);
+    doc.line(8, y, w - 8, y);
+    y += 6;
+
+    // Violation
+    doc.setTextColor(185, 28, 28);
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "bold");
+    doc.text("VIOLATION", 8, y);
+    doc.setFontSize(9);
+    doc.text(challan.violation_label, 8, y + 5);
+    y += 14;
+
+    // Details
+    doc.setLineDashPattern([], 0);
+    doc.setTextColor(80, 80, 80);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+
+    const issuedDate = new Date(challan.issued_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+    const dueDate = challan.due_date ? new Date(challan.due_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+
+    const rows = [
+      ["Date of Issue", issuedDate],
+      ["Due Date", dueDate],
+      ["Vehicle No.", challan.plate_number],
+      ["Vehicle", [challan.vehicle_make, challan.vehicle_model].filter(Boolean).join(" ") || "—"],
+      ["Color", challan.vehicle_color || "—"],
+      ["Owner", challan.owner_name || "—"],
+      ["RTO Office", challan.rto_office || "—"],
+      ["State", challan.state],
+    ];
+
+    rows.forEach(([label, value]) => {
+      doc.setTextColor(140, 140, 140);
+      doc.text(label, 8, y);
+      doc.setTextColor(30, 30, 30);
+      doc.setFont("helvetica", "bold");
+      doc.text(value, w - 8, y, { align: "right" });
+      doc.setFont("helvetica", "normal");
+      y += 5;
+    });
+    y += 4;
+
+    // Fine amount
+    doc.setDrawColor(200);
+    doc.setLineDashPattern([2, 2], 0);
+    doc.line(8, y, w - 8, y);
+    y += 6;
+    doc.setTextColor(80, 80, 80);
+    doc.setFontSize(8);
+    doc.text("Fine Amount", 8, y);
+    doc.setTextColor(10, 10, 10);
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text(`₹${challan.fine_amount.toLocaleString("en-IN")}`, w - 8, y + 1, { align: "right" });
+    y += 12;
+
+    // Footer
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6);
+    doc.setTextColor(160, 160, 160);
+    doc.text("This is a computer-generated eChallan.", w / 2, y, { align: "center" });
+    doc.text("Pay within due date to avoid additional penalties.", w / 2, y + 4, { align: "center" });
+
+    doc.save(`eChallan-${challan.challan_number}.pdf`);
+  };
+
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-slate-100">
       <Loader2 className="h-8 w-8 animate-spin text-blue-700" />
@@ -138,6 +244,9 @@ export default function PublicChallan() {
       <div className="max-w-[480px] mx-auto mb-4 flex gap-2 print:hidden">
         <Button variant="outline" size="sm" onClick={handlePrint} className="gap-2 bg-white border-slate-300 text-slate-700 hover:bg-slate-50">
           <Printer className="h-4 w-4" /> Print
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-2 bg-white border-slate-300 text-slate-700 hover:bg-slate-50">
+          <Download className="h-4 w-4" /> Download PDF
         </Button>
       </div>
 
@@ -249,8 +358,21 @@ export default function PublicChallan() {
           </div>
         )}
 
-        {/* Footer */}
-        <div className="bg-slate-50 px-6 py-3 text-center border-t border-slate-200">
+        {/* QR Code & Footer */}
+        <div className="bg-slate-50 px-6 py-4 text-center border-t border-slate-200">
+          <p className="text-[10px] text-slate-400 mb-3">Scan to view or pay this challan</p>
+          <div className="flex justify-center mb-3">
+            <div className="bg-white p-2 rounded-lg border border-slate-200 shadow-sm">
+              <QRCodeSVG
+                value={publicUrl}
+                size={100}
+                level="M"
+                bgColor="#ffffff"
+                fgColor="#1e3a5f"
+                includeMargin={false}
+              />
+            </div>
+          </div>
           <p className="text-[10px] text-slate-400">This is a computer-generated eChallan.</p>
           <p className="text-[10px] text-slate-400">Please pay within the due date to avoid additional penalties.</p>
 
@@ -261,7 +383,7 @@ export default function PublicChallan() {
                 key={i} 
                 className="bg-slate-800" 
                 style={{ 
-                  width: Math.random() > 0.5 ? 2 : 1, 
+                  width: [2, 1, 2, 1, 1, 2, 1, 2][i % 8], 
                   height: 20 
                 }} 
               />

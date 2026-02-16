@@ -32,6 +32,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Search, AlertTriangle, Filter, Eye, CheckCircle } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import DataScopeToggle from "@/components/DataScopeToggle";
 
 type Violation = Tables<"violations">;
 type ViolationType = Database["public"]["Enums"]["violation_type"];
@@ -62,7 +64,9 @@ export default function Violations() {
   const [filterSeverity, setFilterSeverity] = useState<string>("all");
   const [selectedViolation, setSelectedViolation] = useState<Violation | null>(null);
   const [resolutionNotes, setResolutionNotes] = useState("");
+  const [scope, setScope] = useState<"all" | "mine">("all");
   const { toast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchViolations();
@@ -115,8 +119,9 @@ export default function Violations() {
 
     const matchesType = filterType === "all" || violation.violation_type === filterType;
     const matchesSeverity = filterSeverity === "all" || violation.severity === filterSeverity;
+    const matchesScope = scope === "all" || violation.resolved_by === user?.id;
 
-    return matchesSearch && matchesType && matchesSeverity;
+    return matchesSearch && matchesType && matchesSeverity && matchesScope;
   });
 
   const pendingCount = violations.filter((v) => !v.resolved_at).length;
@@ -132,6 +137,7 @@ export default function Violations() {
           </p>
         </div>
         <div className="flex items-center gap-4">
+          <DataScopeToggle scope={scope} onScopeChange={setScope} />
           <Badge variant="destructive" className="text-sm">
             {pendingCount} Pending
           </Badge>

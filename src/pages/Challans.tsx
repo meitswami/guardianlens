@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Search, Filter, Eye, Send, ExternalLink, Copy } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import DataScopeToggle from "@/components/DataScopeToggle";
 
 export default function Challans() {
   const [challans, setChallans] = useState<any[]>([]);
@@ -17,11 +19,12 @@ export default function Challans() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [selectedChallan, setSelectedChallan] = useState<any>(null);
+  const [scope, setScope] = useState<"all" | "mine">("all");
   const { toast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchChallans();
-    // Realtime subscription
     const channel = supabase
       .channel("challans-updates")
       .on("postgres_changes", { event: "*", schema: "public", table: "challans" }, () => fetchChallans())
@@ -59,7 +62,8 @@ export default function Challans() {
       (c.owner_name || "").toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === "all" || c.status === statusFilter;
     const matchesPayment = paymentFilter === "all" || c.payment_status === paymentFilter;
-    return matchesSearch && matchesStatus && matchesPayment;
+    const matchesScope = scope === "all" || c.issued_by === user?.id;
+    return matchesSearch && matchesStatus && matchesPayment && matchesScope;
   });
 
   const totalFines = challans.reduce((s, c) => s + (c.fine_amount || 0), 0);
@@ -72,7 +76,8 @@ export default function Challans() {
           <h1 className="text-2xl font-bold">eChallans</h1>
           <p className="text-muted-foreground">Manage all issued electronic challans</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex items-center gap-3">
+          <DataScopeToggle scope={scope} onScopeChange={setScope} />
           <Badge variant="outline" className="text-sm">Total Fines: ₹{totalFines.toLocaleString()}</Badge>
           <Badge variant="outline" className="text-sm text-green-600 border-green-600">Collected: ₹{collected.toLocaleString()}</Badge>
         </div>
