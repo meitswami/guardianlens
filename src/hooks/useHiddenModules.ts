@@ -25,7 +25,16 @@ export function useHiddenModules() {
         .eq("key", "hidden_modules");
       if (error) throw error;
     },
-    onSuccess: () => {
+    onMutate: async (newModules) => {
+      await queryClient.cancelQueries({ queryKey: ["hidden-modules"] });
+      const previous = queryClient.getQueryData<string[]>(["hidden-modules"]);
+      queryClient.setQueryData(["hidden-modules"], newModules);
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(["hidden-modules"], context.previous);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["hidden-modules"] });
     },
   });
