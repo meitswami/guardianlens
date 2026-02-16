@@ -20,6 +20,10 @@ interface DetectedVehicle {
   violation_descriptions: string[];
 }
 
+interface EditablePlates {
+  [vehicleIdx: number]: string;
+}
+
 interface DetectionResult {
   vehicles_detected: DetectedVehicle[];
   scene_description: string;
@@ -64,6 +68,7 @@ export default function UploadProcess() {
   const [selectedState, setSelectedState] = useState("Rajasthan");
   const [selectedViolation, setSelectedViolation] = useState("");
   const [challanResult, setChallanResult] = useState<any>(null);
+  const [editablePlates, setEditablePlates] = useState<EditablePlates>({});
   const { toast } = useToast();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -75,6 +80,7 @@ export default function UploadProcess() {
     setDetectionResult(null);
     setVehicleLookup(null);
     setChallanResult(null);
+    setEditablePlates({});
   };
 
   const handleUploadAndProcess = useCallback(async () => {
@@ -114,22 +120,28 @@ export default function UploadProcess() {
     }
   }, [file, toast]);
 
+  const getEffectivePlate = (idx: number) => {
+    if (editablePlates[idx] !== undefined) return editablePlates[idx];
+    return detectionResult?.vehicles_detected[idx]?.plate_number || "";
+  };
+
   const handleVehicleLookup = useCallback(async () => {
-    const vehicle = detectionResult?.vehicles_detected[selectedVehicleIdx];
-    if (!vehicle?.plate_number) {
-      toast({ title: "No plate detected", description: "Enter plate manually or select another vehicle", variant: "destructive" });
+    const plateNumber = getEffectivePlate(selectedVehicleIdx);
+    if (!plateNumber) {
+      toast({ title: "No plate number", description: "Enter plate number manually", variant: "destructive" });
       return;
     }
     setStep("lookup");
     try {
       const { data, error } = await supabase.functions.invoke("vehicle-lookup", {
-        body: { plate_number: vehicle.plate_number },
+        body: { plate_number: plateNumber },
       });
       if (error) throw error;
       if (data.error) throw new Error(data.error);
       setVehicleLookup(data.data);
       setSelectedState(data.data.state || "Rajasthan");
-      if (vehicle.violations.length > 0) setSelectedViolation(vehicle.violations[0]);
+      const vehicleData = detectionResult?.vehicles_detected[selectedVehicleIdx];
+      if (vehicleData && vehicleData.violations.length > 0) setSelectedViolation(vehicleData.violations[0]);
       setStep("looked_up");
     } catch (e: any) {
       toast({ title: "Lookup failed", description: e.message, variant: "destructive" });
@@ -269,11 +281,28 @@ export default function UploadProcess() {
                 )}
                 {selectedVehicle && (
                   <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label className="text-xs text-muted-foreground">Plate Number (editable)</Label>
+                      <div className="flex gap-2 items-center">
+                        <Input
+                          value={getEffectivePlate(selectedVehicleIdx)}
+                          onChange={(e) => setEditablePlates(prev => ({ ...prev, [selectedVehicleIdx]: e.target.value.toUpperCase() }))}
+                          placeholder="e.g. AP-16-BZ-3508"
+                          className="font-mono font-bold tracking-wider"
+                        />
+                        {selectedVehicle.plate_number && editablePlates[selectedVehicleIdx] !== undefined && editablePlates[selectedVehicleIdx] !== selectedVehicle.plate_number && (
+                          <Button variant="ghost" size="sm" onClick={() => setEditablePlates(prev => { const n = { ...prev }; delete n[selectedVehicleIdx]; return n; })}>
+                            Reset
+                          </Button>
+                        )}
+                      </div>
+                      {selectedVehicle.plate_number && (
+                        <p className="text-xs text-muted-foreground">AI detected: <span className="font-mono">{selectedVehicle.plate_number}</span> ({(selectedVehicle.plate_confidence * 100).toFixed(0)}% confidence)</p>
+                      )}
+                    </div>
                     <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div><span className="text-muted-foreground">Plate:</span> <span className="font-mono font-bold">{selectedVehicle.plate_number || "Not detected"}</span></div>
                       <div><span className="text-muted-foreground">Type:</span> {selectedVehicle.vehicle_type}</div>
                       <div><span className="text-muted-foreground">Color:</span> {selectedVehicle.vehicle_color}</div>
-                      <div><span className="text-muted-foreground">Confidence:</span> {(selectedVehicle.plate_confidence * 100).toFixed(0)}%</div>
                     </div>
                     {selectedVehicle.violations.length > 0 ? (
                       <div>
@@ -287,7 +316,7 @@ export default function UploadProcess() {
                     ) : (
                       <Badge variant="outline" className="text-green-600 border-green-600"><CheckCircle className="h-3 w-3 mr-1" /> No violations detected</Badge>
                     )}
-                    <Button onClick={handleVehicleLookup} disabled={!selectedVehicle.plate_number || step === "lookup"} className="w-full">
+                    <Button onClick={handleVehicleLookup} disabled={!getEffectivePlate(selectedVehicleIdx) || step === "lookup"} className="w-full">
                       {step === "lookup" ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Looking up...</> : <><Car className="h-4 w-4 mr-2" /> Lookup Vehicle Details</>}
                     </Button>
                   </div>
