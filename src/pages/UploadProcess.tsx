@@ -24,6 +24,14 @@ interface EditablePlates {
   [vehicleIdx: number]: string;
 }
 
+interface PlateCorrection {
+  vehicleIdx: number;
+  originalPlate: string;
+  correctedPlate: string;
+  timestamp: string;
+  verified: boolean;
+}
+
 interface DetectionResult {
   vehicles_detected: DetectedVehicle[];
   scene_description: string;
@@ -69,6 +77,7 @@ export default function UploadProcess() {
   const [selectedViolation, setSelectedViolation] = useState("");
   const [challanResult, setChallanResult] = useState<any>(null);
   const [editablePlates, setEditablePlates] = useState<EditablePlates>({});
+  const [plateCorrections, setPlateCorrections] = useState<PlateCorrection[]>([]);
   const { toast } = useToast();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -156,6 +165,7 @@ export default function UploadProcess() {
       const vehicle = detectionResult?.vehicles_detected[selectedVehicleIdx];
       const { data: { publicUrl } } = supabase.storage.from("evidence").getPublicUrl(`uploads/${file?.name}`);
 
+      const corrections = plateCorrections.filter(c => c.vehicleIdx === selectedVehicleIdx);
       const { data, error } = await supabase.functions.invoke("create-challan", {
         body: {
           plate_number: vehicleLookup.plate_number,
@@ -164,7 +174,12 @@ export default function UploadProcess() {
           state: selectedState,
           image_url: publicUrl || null,
           vehicle_data: vehicleLookup,
-          ai_detection_data: vehicle,
+          ai_detection_data: {
+            ...vehicle,
+            plate_corrections: corrections.length > 0 ? corrections : undefined,
+            original_ai_plate: vehicle?.plate_number,
+            plate_manually_corrected: corrections.length > 0,
+          },
           severity: "medium",
         },
       });
@@ -282,7 +297,7 @@ export default function UploadProcess() {
                 {selectedVehicle && (
                   <div className="space-y-3">
                     <div className="space-y-2">
-                      <Label className="text-xs text-muted-foreground">Plate Number (editable)</Label>
+                      <Label className="text-xs text-muted-foreground">Plate Number (click to correct)</Label>
                       <div className="flex gap-2 items-center">
                         <Input
                           value={getEffectivePlate(selectedVehicleIdx)}
@@ -291,13 +306,46 @@ export default function UploadProcess() {
                           className="font-mono font-bold tracking-wider"
                         />
                         {selectedVehicle.plate_number && editablePlates[selectedVehicleIdx] !== undefined && editablePlates[selectedVehicleIdx] !== selectedVehicle.plate_number && (
-                          <Button variant="ghost" size="sm" onClick={() => setEditablePlates(prev => { const n = { ...prev }; delete n[selectedVehicleIdx]; return n; })}>
-                            Reset
-                          </Button>
+                          <>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => {
+                                const correction: PlateCorrection = {
+                                  vehicleIdx: selectedVehicleIdx,
+                                  originalPlate: selectedVehicle.plate_number!,
+                                  correctedPlate: editablePlates[selectedVehicleIdx],
+                                  timestamp: new Date().toISOString(),
+                                  verified: true,
+                                };
+                                setPlateCorrections(prev => [...prev, correction]);
+                                toast({ title: "Plate corrected", description: `${selectedVehicle.plate_number} → ${editablePlates[selectedVehicleIdx]}` });
+                              }}
+                            >
+                              <CheckCircle className="h-3 w-3 mr-1" /> Verify
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => setEditablePlates(prev => { const n = { ...prev }; delete n[selectedVehicleIdx]; return n; })}>
+                              Reset
+                            </Button>
+                          </>
                         )}
                       </div>
                       {selectedVehicle.plate_number && (
-                        <p className="text-xs text-muted-foreground">AI detected: <span className="font-mono">{selectedVehicle.plate_number}</span> ({(selectedVehicle.plate_confidence * 100).toFixed(0)}% confidence)</p>
+                        <p className="text-xs text-muted-foreground">
+                          AI detected: <span className="font-mono">{selectedVehicle.plate_number}</span> ({(selectedVehicle.plate_confidence * 100).toFixed(0)}% confidence)
+                        </p>
+                      )}
+                      {/* Correction verified indicator */}
+                      {plateCorrections.filter(c => c.vehicleIdx === selectedVehicleIdx).length > 0 && (
+                        <div className="mt-1 p-2 rounded bg-primary/10 border border-primary/20 text-xs space-y-1">
+                          <p className="font-medium text-primary flex items-center gap-1"><CheckCircle className="h-3 w-3" /> Manually Verified</p>
+                          {plateCorrections.filter(c => c.vehicleIdx === selectedVehicleIdx).map((c, i) => (
+                            <p key={i} className="text-muted-foreground">
+                              <span className="font-mono line-through">{c.originalPlate}</span> → <span className="font-mono font-bold">{c.correctedPlate}</span>
+                              <span className="ml-2 opacity-60">{new Date(c.timestamp).toLocaleTimeString()}</span>
+                            </p>
+                          ))}
+                        </div>
                       )}
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-sm">
