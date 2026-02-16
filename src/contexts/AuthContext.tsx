@@ -43,30 +43,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchUserRole(session.user.id).then(setUserRole);
-      }
-      setLoading(false);
-    });
-
-    // Listen for auth changes
+    // Set up auth state listener FIRST (best practice)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
+        // Set loading false immediately so routes can render
+        setLoading(false);
+        
+        // Fetch role in background (non-blocking)
         if (session?.user) {
-          const role = await fetchUserRole(session.user.id);
-          setUserRole(role);
+          fetchUserRole(session.user.id).then(setUserRole);
         } else {
           setUserRole(null);
         }
-        setLoading(false);
       }
     );
+
+    // Then get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+      if (session?.user) {
+        fetchUserRole(session.user.id).then(setUserRole);
+      }
+    });
 
     return () => subscription.unsubscribe();
   }, []);
