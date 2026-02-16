@@ -1,13 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { AlertTriangle, Car, FileText, CreditCard, CheckCircle, Loader2, Shield } from "lucide-react";
+import { AlertTriangle, Loader2, Shield, Printer, Download } from "lucide-react";
 
 interface ChallanData {
   challan_number: string;
@@ -39,10 +34,8 @@ export default function PublicChallan() {
   const [challan, setChallan] = useState<ChallanData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [payerName, setPayerName] = useState("");
-  const [payerEmail, setPayerEmail] = useState("");
-  const [payerPhone, setPayerPhone] = useState("");
   const [paying, setPaying] = useState(false);
+  const slipRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -58,7 +51,7 @@ export default function PublicChallan() {
   }, [token]);
 
   const handlePayment = async () => {
-    if (!challan || !payerName) return;
+    if (!challan) return;
     setPaying(true);
     try {
       const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/razorpay-payment`, {
@@ -67,21 +60,20 @@ export default function PublicChallan() {
         body: JSON.stringify({
           action: "create_order",
           public_token: token,
-          payer_name: payerName,
-          payer_email: payerEmail,
-          payer_phone: payerPhone,
+          payer_name: challan.owner_name || "Vehicle Owner",
+          payer_email: "",
+          payer_phone: "",
         }),
       });
       const data = await resp.json();
       if (data.error) throw new Error(data.error);
 
       if (data.mock) {
-        toast({ title: "Demo Mode", description: "Razorpay not configured. In production, payment gateway would open here." });
+        toast({ title: "Demo Mode", description: "Payment gateway not configured. In production, Razorpay checkout would open." });
         setPaying(false);
         return;
       }
 
-      // Open Razorpay checkout
       const options = {
         key: data.key_id,
         amount: data.amount,
@@ -101,9 +93,9 @@ export default function PublicChallan() {
             }),
           });
           setChallan(prev => prev ? { ...prev, payment_status: "paid", status: "closed" } : null);
-          toast({ title: "Payment Successful!", description: "Your challan has been paid." });
+          toast({ title: "Payment Successful!", description: "Your challan fine has been paid." });
         },
-        prefill: { name: payerName, email: payerEmail, contact: payerPhone },
+        prefill: { name: challan.owner_name || "", email: "", contact: "" },
         theme: { color: "#1a56db" },
       };
 
@@ -116,126 +108,177 @@ export default function PublicChallan() {
     }
   };
 
+  const handlePrint = () => window.print();
+
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    <div className="min-h-screen flex items-center justify-center bg-slate-100">
+      <Loader2 className="h-8 w-8 animate-spin text-blue-700" />
     </div>
   );
 
   if (error) return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <Card className="max-w-md w-full mx-4">
-        <CardContent className="pt-6 text-center">
-          <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-destructive" />
-          <h2 className="text-lg font-bold mb-2">Challan Not Found</h2>
-          <p className="text-muted-foreground">{error}</p>
-        </CardContent>
-      </Card>
+    <div className="min-h-screen flex items-center justify-center bg-slate-100">
+      <div className="bg-white rounded-lg shadow-lg p-8 max-w-sm text-center">
+        <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-red-500" />
+        <h2 className="text-lg font-bold text-slate-800 mb-2">Challan Not Found</h2>
+        <p className="text-slate-500 text-sm">{error}</p>
+      </div>
     </div>
   );
 
   if (!challan) return null;
 
+  const isPaid = challan.payment_status === "paid";
+  const issuedDate = new Date(challan.issued_at);
+  const dueDate = challan.due_date ? new Date(challan.due_date) : null;
+
   return (
-    <div className="min-h-screen bg-background py-8 px-4">
-      <div className="max-w-2xl mx-auto space-y-6">
+    <div className="min-h-screen bg-slate-100 py-6 px-4 print:bg-white print:py-0">
+      {/* Action buttons - hidden in print */}
+      <div className="max-w-[480px] mx-auto mb-4 flex gap-2 print:hidden">
+        <Button variant="outline" size="sm" onClick={handlePrint} className="gap-2 bg-white border-slate-300 text-slate-700 hover:bg-slate-50">
+          <Printer className="h-4 w-4" /> Print
+        </Button>
+      </div>
+
+      {/* eChallan Receipt Slip */}
+      <div ref={slipRef} className="max-w-[480px] mx-auto bg-white shadow-xl print:shadow-none" style={{ fontFamily: "'Courier New', Courier, monospace" }}>
+        
         {/* Header */}
-        <div className="text-center space-y-2">
-          <div className="flex items-center justify-center gap-2">
-            <Shield className="h-8 w-8 text-primary" />
-            <h1 className="text-2xl font-bold">Traffic eChallan</h1>
+        <div className="bg-blue-800 text-white px-6 py-5 text-center">
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <Shield className="h-6 w-6" />
+            <span className="text-lg font-bold tracking-wide">eCHALLAN</span>
           </div>
-          <p className="text-muted-foreground">Government of {challan.state} - Traffic Enforcement</p>
+          <p className="text-blue-200 text-xs tracking-widest uppercase">Government of {challan.state}</p>
+          <p className="text-blue-300 text-[10px] mt-1">Traffic Enforcement Department</p>
         </div>
 
-        {/* Challan Details */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" /> {challan.challan_number}</CardTitle>
-                <CardDescription>Issued on {new Date(challan.issued_at).toLocaleDateString()}</CardDescription>
-              </div>
-              <Badge variant={challan.payment_status === "paid" ? "default" : "destructive"} className="text-sm">
-                {challan.payment_status === "paid" ? "PAID" : "UNPAID"}
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="bg-destructive/10 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <AlertTriangle className="h-5 w-5 text-destructive" />
-                <span className="font-bold text-destructive">{challan.violation_label}</span>
-              </div>
-              <p className="text-sm text-muted-foreground">{challan.description}</p>
-              <p className="text-2xl font-bold mt-2">Fine: ₹{challan.fine_amount.toLocaleString()}</p>
-            </div>
+        {/* Challan Number & Status Strip */}
+        <div className="flex items-center justify-between px-6 py-3 bg-slate-50 border-b border-dashed border-slate-300">
+          <div>
+            <p className="text-[10px] text-slate-400 uppercase tracking-wider">Challan No.</p>
+            <p className="text-sm font-bold text-slate-800">{challan.challan_number}</p>
+          </div>
+          <div className={`px-3 py-1 rounded text-xs font-bold uppercase tracking-wider ${
+            isPaid 
+              ? "bg-emerald-100 text-emerald-700 border border-emerald-300" 
+              : "bg-red-100 text-red-700 border border-red-300"
+          }`}>
+            {isPaid ? "✓ PAID" : "UNPAID"}
+          </div>
+        </div>
 
-            <Separator />
+        {/* Tear line */}
+        <div className="border-b-2 border-dashed border-slate-200" />
 
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="flex items-center gap-2"><Car className="h-4 w-4 text-muted-foreground" /> <span className="text-muted-foreground">Vehicle:</span></div>
-              <div className="font-medium">{challan.vehicle_make} {challan.vehicle_model} ({challan.vehicle_color})</div>
-              <div className="text-muted-foreground">Plate Number:</div>
-              <div className="font-mono font-bold">{challan.plate_number}</div>
-              <div className="text-muted-foreground">Owner:</div>
-              <div className="font-medium">{challan.owner_name || "N/A"}</div>
-              <div className="text-muted-foreground">RTO Office:</div>
-              <div>{challan.rto_office || "N/A"}</div>
-              <div className="text-muted-foreground">Due Date:</div>
-              <div className="font-medium">{challan.due_date ? new Date(challan.due_date).toLocaleDateString() : "N/A"}</div>
+        {/* Violation Section */}
+        <div className="px-6 py-4 bg-red-50 border-b border-slate-200">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-xs text-red-500 uppercase tracking-wider font-semibold">Violation</p>
+              <p className="text-sm font-bold text-red-800 mt-0.5">{challan.violation_label}</p>
+              {challan.description && (
+                <p className="text-[11px] text-red-600/70 mt-1">{challan.description}</p>
+              )}
             </div>
+          </div>
+        </div>
 
-            {challan.image_url && (
-              <>
-                <Separator />
-                <div>
-                  <p className="text-sm text-muted-foreground mb-2">Evidence</p>
-                  <img src={challan.image_url} alt="Violation evidence" className="rounded-lg max-h-48 object-contain" />
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
+        {/* Details Grid */}
+        <div className="px-6 py-4 space-y-0 border-b border-slate-200">
+          <SlipRow label="Date of Issue" value={issuedDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })} />
+          <SlipRow label="Due Date" value={dueDate ? dueDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"} />
+          <div className="border-t border-dotted border-slate-200 my-2" />
+          <SlipRow label="Vehicle No." value={challan.plate_number} bold />
+          <SlipRow label="Vehicle" value={[challan.vehicle_make, challan.vehicle_model].filter(Boolean).join(" ") || "—"} />
+          <SlipRow label="Color" value={challan.vehicle_color || "—"} />
+          <SlipRow label="Type" value={challan.vehicle_type || "—"} />
+          <div className="border-t border-dotted border-slate-200 my-2" />
+          <SlipRow label="Owner" value={challan.owner_name || "—"} />
+          <SlipRow label="RTO Office" value={challan.rto_office || "—"} />
+          <SlipRow label="State" value={challan.state} />
+        </div>
+
+        {/* Evidence */}
+        {challan.image_url && (
+          <div className="px-6 py-3 border-b border-slate-200">
+            <p className="text-[10px] text-slate-400 uppercase tracking-wider mb-2">Evidence Photo</p>
+            <img src={challan.image_url} alt="Violation evidence" className="w-full h-32 object-cover rounded border border-slate-200" />
+          </div>
+        )}
+
+        {/* Fine Amount */}
+        <div className="px-6 py-4 border-b-2 border-dashed border-slate-200">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-500 uppercase tracking-wider">Fine Amount</span>
+            <span className="text-2xl font-black text-slate-900">₹{challan.fine_amount.toLocaleString("en-IN")}</span>
+          </div>
+          <div className="flex items-center justify-between mt-1">
+            <span className="text-[10px] text-slate-400">Severity</span>
+            <span className={`text-[10px] font-semibold uppercase ${
+              challan.severity === "high" ? "text-red-600" : challan.severity === "medium" ? "text-amber-600" : "text-slate-500"
+            }`}>{challan.severity || "—"}</span>
+          </div>
+        </div>
 
         {/* Payment Section */}
-        {challan.payment_status !== "paid" ? (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><CreditCard className="h-5 w-5" /> Pay Fine Online</CardTitle>
-              <CardDescription>Pay your traffic challan fine securely online</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="payer-name">Full Name *</Label>
-                  <Input id="payer-name" value={payerName} onChange={(e) => setPayerName(e.target.value)} placeholder="Enter your name" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="payer-phone">Phone</Label>
-                  <Input id="payer-phone" value={payerPhone} onChange={(e) => setPayerPhone(e.target.value)} placeholder="+91..." />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="payer-email">Email</Label>
-                  <Input id="payer-email" type="email" value={payerEmail} onChange={(e) => setPayerEmail(e.target.value)} placeholder="your@email.com" />
-                </div>
-              </div>
-              <Button onClick={handlePayment} disabled={paying || !payerName} className="w-full" size="lg">
-                {paying ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Processing...</> : <><CreditCard className="h-4 w-4 mr-2" /> Pay ₹{challan.fine_amount.toLocaleString()} Now</>}
-              </Button>
-              <p className="text-xs text-muted-foreground text-center">Payments processed securely via Razorpay</p>
-            </CardContent>
-          </Card>
+        {!isPaid ? (
+          <div className="px-6 py-5 print:hidden">
+            <Button 
+              onClick={handlePayment} 
+              disabled={paying} 
+              className="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 text-sm tracking-wide"
+              size="lg"
+            >
+              {paying ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Processing...</>
+              ) : (
+                <>Pay ₹{challan.fine_amount.toLocaleString("en-IN")} Online</>
+              )}
+            </Button>
+            <p className="text-[10px] text-slate-400 text-center mt-2">Secure payment via Razorpay</p>
+          </div>
         ) : (
-          <Card className="border-green-500/30 bg-green-500/5">
-            <CardContent className="pt-6 text-center">
-              <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-600" />
-              <h2 className="text-lg font-bold text-green-600">Challan Paid Successfully</h2>
-              <p className="text-muted-foreground">This challan has been settled. No further action required.</p>
-            </CardContent>
-          </Card>
+          <div className="px-6 py-5 text-center">
+            <div className="inline-flex items-center gap-2 text-emerald-700 font-bold text-sm">
+              <span className="text-lg">✓</span> Payment Received
+            </div>
+            <p className="text-[10px] text-slate-400 mt-1">No further action required</p>
+          </div>
         )}
+
+        {/* Footer */}
+        <div className="bg-slate-50 px-6 py-3 text-center border-t border-slate-200">
+          <p className="text-[10px] text-slate-400">This is a computer-generated eChallan.</p>
+          <p className="text-[10px] text-slate-400">Please pay within the due date to avoid additional penalties.</p>
+
+          {/* Barcode-style decoration */}
+          <div className="mt-3 flex items-center justify-center gap-[2px]">
+            {Array.from({ length: 40 }).map((_, i) => (
+              <div 
+                key={i} 
+                className="bg-slate-800" 
+                style={{ 
+                  width: Math.random() > 0.5 ? 2 : 1, 
+                  height: 20 
+                }} 
+              />
+            ))}
+          </div>
+          <p className="text-[9px] text-slate-300 mt-1 font-mono">{challan.challan_number}</p>
+        </div>
       </div>
+    </div>
+  );
+}
+
+function SlipRow({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+  return (
+    <div className="flex justify-between items-baseline py-1">
+      <span className="text-[11px] text-slate-400">{label}</span>
+      <span className={`text-[12px] text-slate-800 text-right ${bold ? "font-bold text-sm" : ""}`}>{value}</span>
     </div>
   );
 }
