@@ -1,5 +1,6 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useHiddenModules } from "@/hooks/useHiddenModules";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -50,11 +51,12 @@ interface SidebarContentProps {
 
 export default function SidebarContent({ collapsed = false, onNavigate }: SidebarContentProps) {
   const { user, userRole, signOut } = useAuth();
+  const { hiddenModules } = useHiddenModules();
   const navigate = useNavigate();
   const location = useLocation();
 
   const filteredNavItems = navItems.filter(
-    (item) => !item.adminOnly || userRole === "admin"
+    (item) => (!item.adminOnly || userRole === "admin") && !hiddenModules.includes(item.path)
   );
 
   const userInitials = user?.email?.substring(0, 2).toUpperCase() || "U";
