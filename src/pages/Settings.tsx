@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useTheme } from "@/components/ThemeProvider";
-import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,11 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { User, Bell, Shield, Palette, Sun, Moon, Monitor } from "lucide-react";
+import { User, Bell, Shield, Palette, Sun, Moon, Monitor, Boxes } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import ModulesSettings from "@/components/settings/ModulesSettings";
 
 export default function Settings() {
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
   const [loading, setLoading] = useState(false);
@@ -80,6 +81,12 @@ export default function Settings() {
             <Palette className="h-4 w-4 mr-2" />
             Appearance
           </TabsTrigger>
+          {userRole === "admin" && (
+            <TabsTrigger value="modules">
+              <Boxes className="h-4 w-4 mr-2" />
+              Modules
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Profile Tab */}
@@ -282,6 +289,12 @@ export default function Settings() {
             </CardContent>
           </Card>
         </TabsContent>
+        {/* Modules Tab (Admin only) */}
+        {userRole === "admin" && (
+          <TabsContent value="modules">
+            <ModulesSettings />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
