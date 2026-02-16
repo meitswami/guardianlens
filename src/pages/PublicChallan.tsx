@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { AlertTriangle, Loader2, Shield, Printer, Download } from "lucide-react";
 import jsPDF from "jspdf";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ChallanData {
   challan_number: string;
@@ -44,14 +45,28 @@ export default function PublicChallan() {
 
   useEffect(() => {
     if (!token) { setError("Invalid challan link"); setLoading(false); return; }
-    fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/public-challan?token=${token}&format=json`)
-      .then(r => r.json())
-      .then(data => {
-        if (data.error) setError(data.error);
-        else setChallan(data);
-      })
-      .catch(() => setError("Failed to load challan"))
-      .finally(() => setLoading(false));
+    
+    const fetchChallan = async () => {
+      try {
+        const { data, error: dbError } = await supabase
+          .from("challans")
+          .select("challan_number, plate_number, violation_type, violation_label, fine_amount, severity, status, payment_status, issued_at, due_date, description, image_url, video_url, vehicle_type, vehicle_make, vehicle_model, vehicle_color, owner_name, state, rto_office, public_token")
+          .eq("public_token", token)
+          .single();
+        
+        if (dbError || !data) {
+          setError("Challan not found");
+        } else {
+          setChallan(data as ChallanData);
+        }
+      } catch {
+        setError("Failed to load challan");
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchChallan();
   }, [token]);
 
   const handlePayment = async () => {
