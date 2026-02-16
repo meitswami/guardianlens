@@ -51,12 +51,12 @@ serve(async (req) => {
 
     // Real API call to RapidAPI vehicle lookup
     const response = await fetch(
-      `https://rto-vehicle-information-verification-india.p.rapidapi.com/api/v1/rc/vehicleinfo`,
+      `https://rto-vehicle-details.p.rapidapi.com/api4`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-rapidapi-host": "rto-vehicle-information-verification-india.p.rapidapi.com",
+          "x-rapidapi-host": "rto-vehicle-details.p.rapidapi.com",
           "x-rapidapi-key": RAPIDAPI_KEY,
         },
         body: JSON.stringify({ reg_no: plate_number, consent: "Y", consent_text: "I agree" }),
