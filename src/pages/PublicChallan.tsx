@@ -44,7 +44,7 @@ export default function PublicChallan() {
 
   useEffect(() => {
     if (!token) { setError("Invalid challan link"); setLoading(false); return; }
-    fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/public-challan?token=${token}`)
+    fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/public-challan?token=${token}&format=json`)
       .then(r => r.json())
       .then(data => {
         if (data.error) setError(data.error);
