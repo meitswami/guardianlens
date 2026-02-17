@@ -12,7 +12,13 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { action } = body; // "create_order" or "verify_payment"
+    const { action } = body;
+
+    if (!action || !["create_order", "verify_payment"].includes(action)) {
+      return new Response(JSON.stringify({ error: "Invalid action" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -24,29 +30,85 @@ serve(async (req) => {
     if (action === "create_order") {
       const { challan_id, public_token, payer_name, payer_email, payer_phone } = body;
 
-      // Fetch challan
+      // Require either auth or valid public_token
+      if (!public_token) {
+        const authHeader = req.headers.get("Authorization");
+        if (!authHeader?.startsWith("Bearer ")) {
+          return new Response(JSON.stringify({ error: "Unauthorized" }), {
+            status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+        const authSupabase = createClient(supabaseUrl, anonKey, {
+          global: { headers: { Authorization: authHeader } },
+        });
+        const token = authHeader.replace("Bearer ", "");
+        const { data: claimsData, error: claimsError } = await authSupabase.auth.getClaims(token);
+        if (claimsError || !claimsData?.claims) {
+          return new Response(JSON.stringify({ error: "Unauthorized" }), {
+            status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+
+      // Input validation
+      if (payer_name && (typeof payer_name !== "string" || payer_name.length > 200)) {
+        return new Response(JSON.stringify({ error: "Invalid payer_name" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (payer_email && (typeof payer_email !== "string" || payer_email.length > 200)) {
+        return new Response(JSON.stringify({ error: "Invalid payer_email" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (payer_phone && (typeof payer_phone !== "string" || payer_phone.length > 20)) {
+        return new Response(JSON.stringify({ error: "Invalid payer_phone" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       let challan;
       if (public_token) {
+        if (typeof public_token !== "string" || public_token.length > 64) {
+          return new Response(JSON.stringify({ error: "Invalid token" }), {
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
         const { data } = await supabase.from("challans").select("*").eq("public_token", public_token).single();
         challan = data;
       } else if (challan_id) {
+        if (typeof challan_id !== "string" || challan_id.length > 50) {
+          return new Response(JSON.stringify({ error: "Invalid challan_id" }), {
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
         const { data } = await supabase.from("challans").select("*").eq("id", challan_id).single();
         challan = data;
       }
-      if (!challan) throw new Error("Challan not found");
-      if (challan.payment_status === "paid") throw new Error("This challan has already been paid");
+      if (!challan) {
+        return new Response(JSON.stringify({ error: "Challan not found" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (challan.payment_status === "paid") {
+        return new Response(JSON.stringify({ error: "This challan has already been paid" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
       const amountInPaise = Math.round(challan.fine_amount * 100);
 
       if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
-        // Mock order for demo
         const mockOrderId = "order_demo_" + Date.now();
         await supabase.from("challan_payments").insert({
           challan_id: challan.id,
           amount: challan.fine_amount,
           status: "created",
           gateway_order_id: mockOrderId,
-          payer_name, payer_email, payer_phone,
+          payer_name: payer_name?.substring(0, 200),
+          payer_email: payer_email?.substring(0, 200),
+          payer_phone: payer_phone?.substring(0, 20),
           payment_gateway: "razorpay",
         });
 
@@ -57,13 +119,12 @@ serve(async (req) => {
           amount: amountInPaise,
           currency: "INR",
           challan_number: challan.challan_number,
-          message: "Razorpay not configured. Demo order created.",
+          message: "Payment gateway not configured. Demo order created.",
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      // Create Razorpay order
       const auth = btoa(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`);
       const orderResp = await fetch("https://api.razorpay.com/v1/orders", {
         method: "POST",
@@ -84,8 +145,10 @@ serve(async (req) => {
       });
 
       if (!orderResp.ok) {
-        const errText = await orderResp.text();
-        throw new Error(`Razorpay order creation failed: ${errText}`);
+        console.error("Payment order creation failed:", orderResp.status);
+        return new Response(JSON.stringify({ error: "Payment order creation failed. Please try again." }), {
+          status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
       const order = await orderResp.json();
@@ -95,7 +158,9 @@ serve(async (req) => {
         amount: challan.fine_amount,
         status: "created",
         gateway_order_id: order.id,
-        payer_name, payer_email, payer_phone,
+        payer_name: payer_name?.substring(0, 200),
+        payer_email: payer_email?.substring(0, 200),
+        payer_phone: payer_phone?.substring(0, 20),
         payment_gateway: "razorpay",
       });
 
@@ -115,23 +180,37 @@ serve(async (req) => {
     if (action === "verify_payment") {
       const { order_id, payment_id, signature } = body;
 
-      // Update payment record
+      // Input validation
+      if (!order_id || typeof order_id !== "string" || order_id.length > 100) {
+        return new Response(JSON.stringify({ error: "Invalid order_id" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (!payment_id || typeof payment_id !== "string" || payment_id.length > 100) {
+        return new Response(JSON.stringify({ error: "Invalid payment_id" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       const { data: payment } = await supabase
         .from("challan_payments")
         .select("*, challans(*)")
         .eq("gateway_order_id", order_id)
         .single();
 
-      if (!payment) throw new Error("Payment record not found");
+      if (!payment) {
+        return new Response(JSON.stringify({ error: "Payment record not found" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
       await supabase.from("challan_payments").update({
         status: "paid",
         gateway_payment_id: payment_id,
-        gateway_signature: signature,
+        gateway_signature: signature?.substring(0, 500),
         payment_method: "razorpay",
       }).eq("id", payment.id);
 
-      // Update challan
       await supabase.from("challans").update({
         payment_status: "paid",
         payment_id,
@@ -147,10 +226,12 @@ serve(async (req) => {
       });
     }
 
-    throw new Error("Invalid action. Use 'create_order' or 'verify_payment'");
+    return new Response(JSON.stringify({ error: "Invalid action" }), {
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (e) {
     console.error("razorpay-payment error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
+    return new Response(JSON.stringify({ error: "Payment processing failed. Please try again." }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

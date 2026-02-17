@@ -14,7 +14,13 @@ serve(async (req) => {
     const url = new URL(req.url);
     const token = url.searchParams.get("token");
     const format = url.searchParams.get("format");
-    if (!token) throw new Error("Token is required");
+
+    // Input validation
+    if (!token || typeof token !== "string" || token.length > 64 || !/^[a-f0-9]+$/.test(token)) {
+      return new Response(JSON.stringify({ error: "Invalid token" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -32,7 +38,6 @@ serve(async (req) => {
       });
     }
 
-    // Return JSON for API/React app usage
     if (format === "json") {
       return new Response(JSON.stringify({
         challan_number: challan.challan_number,
@@ -61,7 +66,6 @@ serve(async (req) => {
       });
     }
 
-    // Default: redirect to the app's public challan page
     const appUrl = Deno.env.get("APP_URL") || "https://guardianlens.lovable.app";
     return new Response(null, {
       status: 302,
@@ -72,7 +76,7 @@ serve(async (req) => {
     });
   } catch (e) {
     console.error("public-challan error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
+    return new Response(JSON.stringify({ error: "Failed to load challan." }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

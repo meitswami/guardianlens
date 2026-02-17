@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,14 +11,45 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { plate_number } = await req.json();
-    if (!plate_number) throw new Error("plate_number is required");
+    // --- Auth check ---
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const authSupabase = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await authSupabase.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const body = await req.json();
+    const { plate_number } = body;
+
+    // --- Input validation ---
+    if (!plate_number || typeof plate_number !== "string" || plate_number.length > 20) {
+      return new Response(JSON.stringify({ error: "Valid plate_number is required (max 20 chars)" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    // Only allow alphanumeric, hyphens, spaces
+    if (!/^[A-Za-z0-9\s\-]+$/.test(plate_number)) {
+      return new Response(JSON.stringify({ error: "Invalid plate number format" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const RAPIDAPI_KEY = Deno.env.get("RAPIDAPI_KEY");
 
     if (!RAPIDAPI_KEY) {
-      // Return mock data when API key not configured
-      console.log("RAPIDAPI_KEY not configured, returning mock data for:", plate_number);
       const stateCode = plate_number.substring(0, 2).toUpperCase();
       const stateMap: Record<string, string> = {
         RJ: "Rajasthan", TS: "Telangana", MH: "Maharashtra", DL: "Delhi",
@@ -41,15 +73,14 @@ serve(async (req) => {
           rto_office: `RTO ${stateCode}-01`,
           state: stateMap[stateCode] || stateCode,
           fuel_type: "Petrol",
-          engine_number: "K12M-" + Math.random().toString(36).substring(2, 9).toUpperCase(),
-          chassis_number: "MA3" + Math.random().toString(36).substring(2, 14).toUpperCase(),
+          engine_number: "DEMO-ENGINE",
+          chassis_number: "DEMO-CHASSIS",
         },
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Real API call to RapidAPI vehicle lookup
     const response = await fetch(
       `https://rto-vehicle-details.p.rapidapi.com/api3`,
       {
@@ -77,12 +108,11 @@ serve(async (req) => {
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     if (!response.ok) {
-      console.error("RapidAPI error:", response.status, responseText);
+      console.error("RapidAPI error:", response.status);
       return notFoundResponse();
     }
 
     if (!responseText || responseText.trim() === "") {
-      console.log("Empty response from RTO API for:", plate_number);
       return notFoundResponse();
     }
 
@@ -90,41 +120,12 @@ serve(async (req) => {
     try {
       apiData = JSON.parse(responseText);
     } catch {
-      console.error("Failed to parse RapidAPI response:", responseText.substring(0, 200));
+      console.error("Failed to parse RTO API response");
       return notFoundResponse();
     }
 
-    console.log("RapidAPI raw response:", JSON.stringify(apiData));
-    
     if (apiData.error || apiData.status === 404) {
-      // Vehicle not found in RTO database - return empty result with not_found flag
-      console.log("Vehicle not found in RTO:", plate_number, apiData.error);
-      const stateCode = plate_number.substring(0, 2).toUpperCase();
-      return new Response(JSON.stringify({
-        success: true,
-        mock: true,
-        not_found: true,
-        data: {
-          plate_number,
-          owner_name: "N/A",
-          owner_phone: null,
-          owner_address: "N/A",
-          vehicle_type: "car",
-          vehicle_make: "N/A",
-          vehicle_model: "N/A",
-          vehicle_color: "N/A",
-          registration_date: null,
-          insurance_valid_until: null,
-          fitness_valid_until: null,
-          rto_office: "N/A",
-          state: stateCode,
-          fuel_type: "N/A",
-          engine_number: "N/A",
-          chassis_number: "N/A",
-        },
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return notFoundResponse();
     }
 
     const result = apiData.result || apiData;
@@ -158,7 +159,7 @@ serve(async (req) => {
     });
   } catch (e) {
     console.error("vehicle-lookup error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
+    return new Response(JSON.stringify({ error: "Vehicle lookup failed. Please try again." }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
