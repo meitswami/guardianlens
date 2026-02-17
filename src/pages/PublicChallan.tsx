@@ -52,7 +52,7 @@ export default function PublicChallan() {
           .from("challans")
           .select("challan_number, plate_number, violation_type, violation_label, fine_amount, severity, status, payment_status, issued_at, due_date, description, image_url, video_url, vehicle_type, vehicle_make, vehicle_model, vehicle_color, owner_name, state, rto_office, public_token")
           .eq("public_token", token)
-          .single();
+          .maybeSingle();
         
         if (dbError || !data) {
           setError("Challan not found");
