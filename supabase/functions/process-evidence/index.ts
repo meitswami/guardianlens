@@ -81,6 +81,26 @@ serve(async (req) => {
       }).eq("id", queue_id);
     }
 
+    // Download image from private storage and convert to base64
+    let imageDataUrl: string;
+    try {
+      const imgResponse = await fetch(mediaUrl, {
+        headers: { Authorization: `Bearer ${supabaseKey}` },
+      });
+      if (!imgResponse.ok) {
+        throw new Error(`Failed to fetch image: ${imgResponse.status}`);
+      }
+      const imgBuffer = await imgResponse.arrayBuffer();
+      const contentType = imgResponse.headers.get("content-type") || "image/jpeg";
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(imgBuffer)));
+      imageDataUrl = `data:${contentType};base64,${base64}`;
+    } catch (fetchErr) {
+      console.error("Image fetch error:", fetchErr);
+      return new Response(JSON.stringify({ error: "Could not access the uploaded image." }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Use Lovable AI for vehicle detection and plate OCR
     const prompt = `Analyze this traffic surveillance image/frame. Extract the following information in JSON format:
 {
@@ -126,7 +146,7 @@ Rules:
             role: "user",
             content: [
               { type: "text", text: prompt },
-              { type: "image_url", image_url: { url: mediaUrl } },
+              { type: "image_url", image_url: { url: imageDataUrl } },
             ],
           },
         ],
