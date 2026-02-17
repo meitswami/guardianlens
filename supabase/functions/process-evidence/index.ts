@@ -84,27 +84,27 @@ serve(async (req) => {
     // Download image from private storage and convert to base64
     let imageDataUrl: string;
     try {
-      // Extract bucket and path from the URL, then use Supabase storage download
+      // Extract bucket and path from the URL
       const urlObj = new URL(mediaUrl);
-      const pathMatch = urlObj.pathname.match(/\/storage\/v1\/object\/(?:public\/)?(.+)/);
+      const pathMatch = urlObj.pathname.match(/\/storage\/v1\/object\/(?:public\/|authenticated\/)?(.+)/);
       if (!pathMatch) throw new Error("Could not parse storage path from URL");
       const storagePath = pathMatch[1]; // e.g. "evidence/uploads/filename.jpeg"
       const bucketName = storagePath.split("/")[0];
       const filePath = storagePath.split("/").slice(1).join("/");
       
-      // Use Supabase storage API with service role key
-      const downloadUrl = `${supabaseUrl}/storage/v1/object/${bucketName}/${filePath}`;
-      const imgResponse = await fetch(downloadUrl, {
-        headers: {
-          Authorization: `Bearer ${supabaseKey}`,
-          apikey: supabaseKey,
-        },
-      });
-      if (!imgResponse.ok) {
-        throw new Error(`Failed to fetch image: ${imgResponse.status} from ${downloadUrl}`);
+      console.log(`Downloading from bucket: ${bucketName}, path: ${filePath}`);
+      
+      // Use Supabase JS client download (handles auth automatically with service role)
+      const { data: fileData, error: downloadError } = await supabase.storage
+        .from(bucketName)
+        .download(filePath);
+      
+      if (downloadError || !fileData) {
+        throw new Error(`Storage download failed: ${downloadError?.message || "No data returned"}`);
       }
-      const imgBuffer = await imgResponse.arrayBuffer();
-      const contentType = imgResponse.headers.get("content-type") || "image/jpeg";
+      
+      const imgBuffer = await fileData.arrayBuffer();
+      const contentType = fileData.type || "image/jpeg";
       // Use chunked approach to avoid call stack overflow with large images
       const bytes = new Uint8Array(imgBuffer);
       let binary = "";

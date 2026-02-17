@@ -7,8 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, Camera, Loader2, CheckCircle, AlertTriangle, Car, FileText, Send, Plus, Clock, X, Timer } from "lucide-react";
+import { Upload, Camera, Loader2, CheckCircle, AlertTriangle, Car, FileText, Send, Plus, Clock, X, Timer, Wifi } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import LiveCameraCapture from "@/components/LiveCameraCapture";
 
 interface DetectedVehicle {
   vehicle_type: string;
@@ -348,7 +350,7 @@ export default function UploadProcess() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Upload & Process Evidence</h1>
-          <p className="text-muted-foreground">Upload traffic images/videos for AI-powered violation detection and eChallan generation</p>
+          <p className="text-muted-foreground">AI-powered violation detection and eChallan generation</p>
         </div>
         {uploads.length > 0 && (
           <div className="flex gap-2">
@@ -358,6 +360,19 @@ export default function UploadProcess() {
         )}
       </div>
 
+      <Tabs defaultValue="manual" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="manual">
+            <Upload className="h-4 w-4 mr-2" />
+            Manual Upload
+          </TabsTrigger>
+          <TabsTrigger value="live">
+            <Wifi className="h-4 w-4 mr-2" />
+            Live Camera Capture
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="manual">
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Upload Queue Panel */}
         <Card className="lg:col-span-1">
@@ -822,6 +837,12 @@ export default function UploadProcess() {
           )}
         </div>
       </div>
+        </TabsContent>
+
+        <TabsContent value="live">
+          <LiveCameraCapture />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
