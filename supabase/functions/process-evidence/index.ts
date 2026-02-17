@@ -89,7 +89,7 @@ serve(async (req) => {
       let fetchUrl = mediaUrl;
       // Replace /object/public/ with /object/authenticated/ for private buckets
       if (fetchUrl.includes("/storage/v1/object/public/")) {
-        fetchUrl = fetchUrl.replace("/storage/v1/object/public/", "/storage/v1/object/");
+        fetchUrl = fetchUrl.replace("/storage/v1/object/public/", "/storage/v1/object/authenticated/");
       }
       const imgResponse = await fetch(fetchUrl, {
         headers: { Authorization: `Bearer ${supabaseKey}` },
