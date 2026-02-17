@@ -76,6 +76,8 @@ interface UploadItem {
   editablePlates: Record<number, string>;
   plateCorrections: PlateCorrection[];
   publicUrl: string | null;
+  otherDescription: string;
+  otherFineAmount: string;
 }
 
 const violationTypeLabels: Record<string, string> = {
@@ -130,6 +132,8 @@ export default function UploadProcess() {
       editablePlates: {},
       plateCorrections: [],
       publicUrl: null,
+      otherDescription: "",
+      otherFineAmount: "",
     }));
 
     setUploads(prev => [...prev, ...newItems]);
@@ -295,11 +299,14 @@ export default function UploadProcess() {
       const vehicle = item.detectionResult?.vehicles_detected[item.selectedVehicleIdx];
       const corrections = item.plateCorrections.filter(c => c.vehicleIdx === item.selectedVehicleIdx);
 
+      const isOtherViolation = item.selectedViolation === "other";
       const { data, error } = await supabase.functions.invoke("create-challan", {
         body: {
           plate_number: item.vehicleLookup.plate_number,
           violation_type: item.selectedViolation,
-          violation_label: violationTypeLabels[item.selectedViolation] || item.selectedViolation,
+          violation_label: isOtherViolation && item.otherDescription
+            ? item.otherDescription
+            : (violationTypeLabels[item.selectedViolation] || item.selectedViolation),
           state: item.selectedState,
           image_url: item.publicUrl || null,
           vehicle_data: item.vehicleLookup,
@@ -310,6 +317,7 @@ export default function UploadProcess() {
             plate_manually_corrected: corrections.length > 0,
           },
           severity: "medium",
+          ...(isOtherViolation && item.otherFineAmount ? { custom_fine_amount: Number(item.otherFineAmount) } : {}),
         },
       });
       if (error) throw error;
@@ -652,8 +660,31 @@ export default function UploadProcess() {
                                           <span className={isChecked ? "font-medium" : "text-muted-foreground"}>{violationTypeLabels[vt]}</span>
                                         </label>
                                       );
-                                    })}
-                                  </div>
+                                     })}
+                                   </div>
+                                   {selectedVehicle.violations.includes("other") && (
+                                     <div className="mt-2 space-y-2 border rounded-md p-2 bg-muted/30">
+                                       <div>
+                                         <Label className="text-xs">Violation Description</Label>
+                                         <Input
+                                           placeholder="e.g. Driving without license"
+                                           value={activeUpload.otherDescription}
+                                           onChange={(e) => updateUpload(activeUpload.id, { otherDescription: e.target.value })}
+                                           className="mt-1 h-8 text-sm"
+                                         />
+                                       </div>
+                                       <div>
+                                         <Label className="text-xs">Fine Amount (₹)</Label>
+                                         <Input
+                                           type="number"
+                                           placeholder="e.g. 1000"
+                                           value={activeUpload.otherFineAmount}
+                                           onChange={(e) => updateUpload(activeUpload.id, { otherFineAmount: e.target.value })}
+                                           className="mt-1 h-8 text-sm"
+                                         />
+                                       </div>
+                                     </div>
+                                   )}
                                 </div>
                               <Button
                                 onClick={() => handleVehicleLookup(activeUpload.id)}
