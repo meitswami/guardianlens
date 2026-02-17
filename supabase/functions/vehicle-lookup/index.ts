@@ -63,14 +63,31 @@ serve(async (req) => {
       }
     );
 
+    const responseText = await response.text();
+    
     if (!response.ok) {
-      const errText = await response.text();
-      console.error("RapidAPI error:", response.status, errText);
+      console.error("RapidAPI error:", response.status, responseText);
       throw new Error(`Vehicle lookup failed: ${response.status}`);
     }
 
-    const apiData = await response.json();
+    if (!responseText || responseText.trim() === "") {
+      throw new Error("Vehicle not found - empty response from RTO API");
+    }
+
+    let apiData;
+    try {
+      apiData = JSON.parse(responseText);
+    } catch {
+      console.error("Failed to parse RapidAPI response:", responseText.substring(0, 200));
+      throw new Error("Vehicle not found or invalid response from RTO API");
+    }
+
     console.log("RapidAPI raw response:", JSON.stringify(apiData));
+    
+    if (apiData.error) {
+      throw new Error(`Vehicle lookup failed: ${apiData.error}`);
+    }
+
     const result = apiData.result || apiData;
 
     return new Response(JSON.stringify({
