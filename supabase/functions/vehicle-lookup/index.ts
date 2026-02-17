@@ -51,7 +51,7 @@ serve(async (req) => {
 
     // Real API call to RapidAPI vehicle lookup
     const response = await fetch(
-      `https://rto-vehicle-details.p.rapidapi.com/api4`,
+      `https://rto-vehicle-details.p.rapidapi.com/api3`,
       {
         method: "POST",
         headers: {
@@ -59,7 +59,7 @@ serve(async (req) => {
           "x-rapidapi-host": "rto-vehicle-details.p.rapidapi.com",
           "x-rapidapi-key": RAPIDAPI_KEY,
         },
-        body: JSON.stringify({ reg_no: plate_number, consent: "Y", consent_text: "I agree" }),
+        body: JSON.stringify({ vehicle_number: plate_number }),
       }
     );
 
@@ -70,6 +70,7 @@ serve(async (req) => {
     }
 
     const apiData = await response.json();
+    console.log("RapidAPI raw response:", JSON.stringify(apiData));
     const result = apiData.result || apiData;
 
     return new Response(JSON.stringify({
