@@ -81,7 +81,7 @@ export default function SidebarContent({ collapsed = false, onNavigate }: Sideba
               <Shield className="h-5 w-5 text-sidebar-primary" />
             </div>
             <div>
-              <span className="font-semibold text-sm block">Traffic System</span>
+              <span className="font-semibold text-sm block">GUARDIAN LENS</span>
               <span className="text-[10px] text-sidebar-foreground/60">Surveillance Portal</span>
             </div>
           </div>

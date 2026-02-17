@@ -79,7 +79,7 @@ export default function DashboardLayout() {
             </Sheet>
 
             <div className="hidden md:block">
-              <h1 className="text-lg font-semibold">Traffic Surveillance System</h1>
+              <h1 className="text-lg font-semibold">GUARDIAN LENS</h1>
               <p className="text-xs text-muted-foreground hidden lg:block">Government of India • Ministry of Road Transport</p>
             </div>
           </div>
