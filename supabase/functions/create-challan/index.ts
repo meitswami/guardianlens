@@ -23,7 +23,7 @@ serve(async (req) => {
       plate_number, violation_type, violation_label, state,
       image_url, video_url, evidence_urls,
       vehicle_data, ai_detection_data, severity,
-      vehicle_id, violation_id, issued_by,
+      vehicle_id, violation_id, issued_by, custom_fine_amount,
     } = body;
 
     if (!plate_number || !violation_type || !state) {
@@ -42,7 +42,7 @@ serve(async (req) => {
       .eq("state", state)
       .single();
 
-    const fineAmount = fineData?.fine_amount || 500;
+    const fineAmount = custom_fine_amount || fineData?.fine_amount || 500;
     const challanNumber = generateChallanNumber(state);
 
     // Create challan
