@@ -84,7 +84,14 @@ serve(async (req) => {
     // Download image from private storage and convert to base64
     let imageDataUrl: string;
     try {
-      const imgResponse = await fetch(mediaUrl, {
+      // Fix: the client sends a "public" URL but the bucket is private.
+      // Convert public URL to authenticated URL, or use Supabase storage download.
+      let fetchUrl = mediaUrl;
+      // Replace /object/public/ with /object/authenticated/ for private buckets
+      if (fetchUrl.includes("/storage/v1/object/public/")) {
+        fetchUrl = fetchUrl.replace("/storage/v1/object/public/", "/storage/v1/object/");
+      }
+      const imgResponse = await fetch(fetchUrl, {
         headers: { Authorization: `Bearer ${supabaseKey}` },
       });
       if (!imgResponse.ok) {
