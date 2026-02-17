@@ -84,18 +84,24 @@ serve(async (req) => {
     // Download image from private storage and convert to base64
     let imageDataUrl: string;
     try {
-      // Fix: the client sends a "public" URL but the bucket is private.
-      // Convert public URL to authenticated URL, or use Supabase storage download.
-      let fetchUrl = mediaUrl;
-      // Replace /object/public/ with /object/authenticated/ for private buckets
-      if (fetchUrl.includes("/storage/v1/object/public/")) {
-        fetchUrl = fetchUrl.replace("/storage/v1/object/public/", "/storage/v1/object/authenticated/");
-      }
-      const imgResponse = await fetch(fetchUrl, {
-        headers: { Authorization: `Bearer ${supabaseKey}` },
+      // Extract bucket and path from the URL, then use Supabase storage download
+      const urlObj = new URL(mediaUrl);
+      const pathMatch = urlObj.pathname.match(/\/storage\/v1\/object\/(?:public\/)?(.+)/);
+      if (!pathMatch) throw new Error("Could not parse storage path from URL");
+      const storagePath = pathMatch[1]; // e.g. "evidence/uploads/filename.jpeg"
+      const bucketName = storagePath.split("/")[0];
+      const filePath = storagePath.split("/").slice(1).join("/");
+      
+      // Use Supabase storage API with service role key
+      const downloadUrl = `${supabaseUrl}/storage/v1/object/${bucketName}/${filePath}`;
+      const imgResponse = await fetch(downloadUrl, {
+        headers: {
+          Authorization: `Bearer ${supabaseKey}`,
+          apikey: supabaseKey,
+        },
       });
       if (!imgResponse.ok) {
-        throw new Error(`Failed to fetch image: ${imgResponse.status}`);
+        throw new Error(`Failed to fetch image: ${imgResponse.status} from ${downloadUrl}`);
       }
       const imgBuffer = await imgResponse.arrayBuffer();
       const contentType = imgResponse.headers.get("content-type") || "image/jpeg";
