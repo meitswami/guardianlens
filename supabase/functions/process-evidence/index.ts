@@ -92,8 +92,17 @@ serve(async (req) => {
       }
       const imgBuffer = await imgResponse.arrayBuffer();
       const contentType = imgResponse.headers.get("content-type") || "image/jpeg";
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(imgBuffer)));
+      // Use chunked approach to avoid call stack overflow with large images
+      const bytes = new Uint8Array(imgBuffer);
+      let binary = "";
+      const chunkSize = 8192;
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        const chunk = bytes.subarray(i, i + chunkSize);
+        binary += String.fromCharCode(...chunk);
+      }
+      const base64 = btoa(binary);
       imageDataUrl = `data:${contentType};base64,${base64}`;
+      console.log(`Image downloaded: ${bytes.length} bytes, base64 length: ${base64.length}`);
     } catch (fetchErr) {
       console.error("Image fetch error:", fetchErr);
       return new Response(JSON.stringify({ error: "Could not access the uploaded image." }), {
