@@ -46,6 +46,16 @@ interface VehicleLookupData {
   vehicle_color: string;
   rto_office: string;
   state: string;
+  fuel_type?: string;
+  engine_number?: string;
+  chassis_number?: string;
+  registration_date?: string;
+  insurance_valid_until?: string;
+  fitness_valid_until?: string;
+  father_name?: string;
+  rc_status?: string;
+  insurance_company?: string;
+  mock?: boolean;
 }
 
 type ProcessingStep = "upload" | "detecting" | "detected" | "lookup" | "looked_up" | "challan" | "done";
@@ -191,16 +201,85 @@ export default function UploadProcess() {
       const { data, error } = await supabase.functions.invoke("vehicle-lookup", { body: { plate_number: plateNumber } });
       if (error) throw error;
       if (data.error) throw new Error(data.error);
+      
+      // Check if all key fields are N/A (API returned no useful data)
+      const d = data.data;
+      const isEmptyResult = d.owner_name === "N/A" && d.vehicle_make === "N/A" && d.engine_number === "N/A";
+      
+      if (isEmptyResult) {
+        toast({ 
+          title: "Vehicle not found in RTO database", 
+          description: "Using test data. The plate may be invalid or not registered.", 
+          variant: "destructive" 
+        });
+        // Fallback to mock data for testing
+        const stateCode = plateNumber.substring(0, 2).toUpperCase();
+        const stateMap: Record<string, string> = {
+          RJ: "Rajasthan", TS: "Telangana", MH: "Maharashtra", DL: "Delhi",
+          KA: "Karnataka", TN: "Tamil Nadu", AP: "Andhra Pradesh", GJ: "Gujarat",
+        };
+        const mockData: VehicleLookupData = {
+          plate_number: plateNumber,
+          owner_name: "Vehicle Owner (Test Mode)",
+          owner_phone: "+919876543210",
+          owner_address: `123 Main Road, ${stateMap[stateCode] || "Unknown State"}`,
+          vehicle_type: "car",
+          vehicle_make: "Unknown",
+          vehicle_model: "Unknown",
+          vehicle_color: "N/A",
+          rto_office: `RTO ${stateCode}-01`,
+          state: stateMap[stateCode] || stateCode,
+          fuel_type: "N/A",
+          registration_date: "N/A",
+          rc_status: "Not Found",
+          mock: true,
+        };
+        const vehicleData = item.detectionResult?.vehicles_detected[item.selectedVehicleIdx];
+        updateUpload(itemId, {
+          vehicleLookup: mockData,
+          selectedState: mockData.state || "Rajasthan",
+          selectedViolation: vehicleData?.violations?.[0] || "",
+          step: "looked_up",
+        });
+        return;
+      }
+
       const vehicleData = item.detectionResult?.vehicles_detected[item.selectedVehicleIdx];
       updateUpload(itemId, {
-        vehicleLookup: data.data,
-        selectedState: data.data.state || "Rajasthan",
+        vehicleLookup: { ...d, mock: false },
+        selectedState: d.state || "Rajasthan",
         selectedViolation: vehicleData?.violations?.[0] || "",
         step: "looked_up",
       });
     } catch (e: any) {
-      toast({ title: "Lookup failed", description: e.message, variant: "destructive" });
-      updateUpload(itemId, { step: "detected" });
+      toast({ title: "Lookup failed", description: `${e.message}. Falling back to test data.`, variant: "destructive" });
+      // Fallback to mock on any error
+      const stateCode = plateNumber.substring(0, 2).toUpperCase();
+      const stateMap: Record<string, string> = {
+        RJ: "Rajasthan", TS: "Telangana", MH: "Maharashtra", DL: "Delhi",
+        KA: "Karnataka", TN: "Tamil Nadu", AP: "Andhra Pradesh", GJ: "Gujarat",
+      };
+      const mockData: VehicleLookupData = {
+        plate_number: plateNumber,
+        owner_name: "Vehicle Owner (Test Mode)",
+        owner_phone: "+919876543210",
+        owner_address: `123 Main Road, ${stateMap[stateCode] || "Unknown State"}`,
+        vehicle_type: "car",
+        vehicle_make: "Unknown",
+        vehicle_model: "Unknown",
+        vehicle_color: "N/A",
+        rto_office: `RTO ${stateCode}-01`,
+        state: stateMap[stateCode] || stateCode,
+        rc_status: "Lookup Failed",
+        mock: true,
+      };
+      const vehicleData = item.detectionResult?.vehicles_detected[item.selectedVehicleIdx];
+      updateUpload(itemId, {
+        vehicleLookup: mockData,
+        selectedState: mockData.state || "Rajasthan",
+        selectedViolation: vehicleData?.violations?.[0] || "",
+        step: "looked_up",
+      });
     }
   }, [uploads, updateUpload, toast]);
 
@@ -578,16 +657,47 @@ export default function UploadProcess() {
               {activeUpload.vehicleLookup && (
                 <div className="grid gap-6 lg:grid-cols-2">
                   <Card>
-                    <CardHeader><CardTitle className="text-lg">Vehicle & Owner Details</CardTitle></CardHeader>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        Vehicle & Owner Details
+                        {activeUpload.vehicleLookup.mock && (
+                          <Badge variant="destructive">
+                            <AlertTriangle className="h-3 w-3 mr-1" /> Test Data
+                          </Badge>
+                        )}
+                      </CardTitle>
+                    </CardHeader>
                     <CardContent>
                       <div className="grid grid-cols-2 gap-3 text-sm">
                         <div><span className="text-muted-foreground">Owner:</span> <span className="font-medium">{activeUpload.vehicleLookup.owner_name}</span></div>
                         <div><span className="text-muted-foreground">Phone:</span> {activeUpload.vehicleLookup.owner_phone || "N/A"}</div>
+                        {activeUpload.vehicleLookup.father_name && (
+                          <div><span className="text-muted-foreground">S/O:</span> {activeUpload.vehicleLookup.father_name}</div>
+                        )}
                         <div><span className="text-muted-foreground">Vehicle:</span> {activeUpload.vehicleLookup.vehicle_make} {activeUpload.vehicleLookup.vehicle_model}</div>
                         <div><span className="text-muted-foreground">Color:</span> {activeUpload.vehicleLookup.vehicle_color}</div>
+                        <div><span className="text-muted-foreground">Fuel:</span> {activeUpload.vehicleLookup.fuel_type || "N/A"}</div>
                         <div><span className="text-muted-foreground">RTO:</span> {activeUpload.vehicleLookup.rto_office}</div>
                         <div><span className="text-muted-foreground">State:</span> {activeUpload.vehicleLookup.state}</div>
+                        {activeUpload.vehicleLookup.registration_date && (
+                          <div><span className="text-muted-foreground">Reg Date:</span> {activeUpload.vehicleLookup.registration_date}</div>
+                        )}
+                        {activeUpload.vehicleLookup.rc_status && (
+                          <div><span className="text-muted-foreground">RC Status:</span> <Badge variant={activeUpload.vehicleLookup.rc_status === "Active" ? "default" : "destructive"} className="text-xs">{activeUpload.vehicleLookup.rc_status}</Badge></div>
+                        )}
+                        {activeUpload.vehicleLookup.insurance_valid_until && (
+                          <div><span className="text-muted-foreground">Insurance:</span> {activeUpload.vehicleLookup.insurance_valid_until}</div>
+                        )}
+                        {activeUpload.vehicleLookup.insurance_company && (
+                          <div><span className="text-muted-foreground">Insurer:</span> {activeUpload.vehicleLookup.insurance_company}</div>
+                        )}
                         <div className="col-span-2"><span className="text-muted-foreground">Address:</span> {activeUpload.vehicleLookup.owner_address}</div>
+                        {activeUpload.vehicleLookup.engine_number && activeUpload.vehicleLookup.engine_number !== "N/A" && (
+                          <div><span className="text-muted-foreground">Engine:</span> <span className="font-mono text-xs">{activeUpload.vehicleLookup.engine_number}</span></div>
+                        )}
+                        {activeUpload.vehicleLookup.chassis_number && activeUpload.vehicleLookup.chassis_number !== "N/A" && (
+                          <div><span className="text-muted-foreground">Chassis:</span> <span className="font-mono text-xs">{activeUpload.vehicleLookup.chassis_number}</span></div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
