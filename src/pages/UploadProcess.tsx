@@ -80,6 +80,7 @@ interface UploadItem {
 
 const violationTypeLabels: Record<string, string> = {
   helmet: "No Helmet",
+  helmet_pillion: "No Helmets (Rider & Pillion)",
   seatbelt: "No Seatbelt",
   triple_riding: "Triple Riding",
   mobile_phone: "Mobile Phone Usage",
@@ -89,6 +90,8 @@ const violationTypeLabels: Record<string, string> = {
   overloading: "Overloading",
   other: "Other",
 };
+
+const allViolationTypes = Object.keys(violationTypeLabels);
 
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
@@ -619,18 +622,39 @@ export default function UploadProcess() {
                                 <div><span className="text-muted-foreground">Type:</span> {selectedVehicle.vehicle_type}</div>
                                 <div><span className="text-muted-foreground">Color:</span> {selectedVehicle.vehicle_color}</div>
                               </div>
-                              {selectedVehicle.violations.length > 0 ? (
-                                <div>
-                                  <Label className="text-xs text-muted-foreground">Violations Detected</Label>
+                              <div>
+                                  <Label className="text-xs text-muted-foreground">Violations Detected <span className="opacity-60">(click to edit)</span></Label>
                                   <div className="flex flex-wrap gap-1 mt-1">
                                     {selectedVehicle.violations.map((v) => (
-                                      <Badge key={v} variant="destructive">{violationTypeLabels[v] || v}</Badge>
+                                      <Badge key={v} variant="destructive" className="cursor-pointer">{violationTypeLabels[v] || v}</Badge>
                                     ))}
                                   </div>
+                                  <div className="mt-2 border rounded-md p-2 space-y-1 bg-muted/30">
+                                    {allViolationTypes.map((vt) => {
+                                      const isChecked = selectedVehicle.violations.includes(vt);
+                                      return (
+                                        <label key={vt} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 px-1 py-0.5 rounded">
+                                          <input
+                                            type="checkbox"
+                                            checked={isChecked}
+                                            onChange={() => {
+                                              const updated = isChecked
+                                                ? selectedVehicle.violations.filter(x => x !== vt)
+                                                : [...selectedVehicle.violations, vt];
+                                              const updatedVehicles = [...activeUpload.detectionResult!.vehicles_detected];
+                                              updatedVehicles[activeUpload.selectedVehicleIdx] = { ...selectedVehicle, violations: updated };
+                                              updateUpload(activeUpload.id, {
+                                                detectionResult: { ...activeUpload.detectionResult!, vehicles_detected: updatedVehicles },
+                                              });
+                                            }}
+                                            className="rounded border-border"
+                                          />
+                                          <span className={isChecked ? "font-medium" : "text-muted-foreground"}>{violationTypeLabels[vt]}</span>
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
                                 </div>
-                              ) : (
-                                <Badge variant="outline" className="border-primary/50 text-primary"><CheckCircle className="h-3 w-3 mr-1" /> No violations detected</Badge>
-                              )}
                               <Button
                                 onClick={() => handleVehicleLookup(activeUpload.id)}
                                 disabled={!getEffectivePlate(activeUpload, activeUpload.selectedVehicleIdx) || activeUpload.step === "lookup"}

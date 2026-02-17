@@ -41,7 +41,7 @@ serve(async (req) => {
       "vehicle_color": "color",
       "vehicle_make": "manufacturer if identifiable",
       "vehicle_model": "model if identifiable",
-      "violations": ["helmet", "seatbelt", "triple_riding", "mobile_phone", "wrong_way", "red_light", "illegal_parking", "overloading", "other"],
+      "violations": ["helmet", "helmet_pillion", "seatbelt", "triple_riding", "mobile_phone", "wrong_way", "red_light", "illegal_parking", "overloading", "other"],
       "violation_descriptions": ["description of each violation"]
     }
   ],
@@ -54,7 +54,13 @@ Rules:
 - Detect traffic violations visible in the image
 - Be specific about violation types matching the enum values exactly
 - If no plate is readable, set plate_number to null
-- If no violations detected, return empty violations array`;
+- If no violations detected, return empty violations array
+- CRITICAL for two-wheelers: Count the EXACT number of people on the vehicle carefully.
+  - "triple_riding" = ONLY when there are 3 or more persons on a single two-wheeler
+  - If there are exactly 2 persons (rider + pillion), do NOT use "triple_riding"
+  - For helmet violations with 2 persons: use "helmet" if only rider has no helmet, use "helmet_pillion" if both rider AND pillion have no helmet
+  - You can combine "helmet" and "helmet_pillion" if needed
+- Do NOT confuse 2-person riding (legal) with triple riding (3+ persons)`;
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
