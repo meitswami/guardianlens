@@ -42,7 +42,7 @@ export default function Login() {
       {/* Government Header Bar */}
       <div className="govt-header flex items-center justify-center gap-2">
         <Shield className="h-4 w-4" />
-        <span>Traffic Surveillance & Vehicle Management System</span>
+        <span>GUARDIAN LENS — Traffic Surveillance & Vehicle Management</span>
       </div>
 
       <div className="flex-1 flex items-center justify-center p-4">
@@ -117,7 +117,7 @@ export default function Login() {
 
       {/* Footer */}
       <div className="text-center py-4 text-sm text-muted-foreground border-t">
-        © 2026 Traffic Surveillance System. All rights reserved.
+        © 2026 GUARDIAN LENS. All rights reserved.
       </div>
     </div>
   );
