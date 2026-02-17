@@ -84,8 +84,35 @@ serve(async (req) => {
 
     console.log("RapidAPI raw response:", JSON.stringify(apiData));
     
-    if (apiData.error) {
-      throw new Error(`Vehicle lookup failed: ${apiData.error}`);
+    if (apiData.error || apiData.status === 404) {
+      // Vehicle not found in RTO database - return empty result with not_found flag
+      console.log("Vehicle not found in RTO:", plate_number, apiData.error);
+      const stateCode = plate_number.substring(0, 2).toUpperCase();
+      return new Response(JSON.stringify({
+        success: true,
+        mock: true,
+        not_found: true,
+        data: {
+          plate_number,
+          owner_name: "N/A",
+          owner_phone: null,
+          owner_address: "N/A",
+          vehicle_type: "car",
+          vehicle_make: "N/A",
+          vehicle_model: "N/A",
+          vehicle_color: "N/A",
+          registration_date: null,
+          insurance_valid_until: null,
+          fitness_valid_until: null,
+          rto_office: "N/A",
+          state: stateCode,
+          fuel_type: "N/A",
+          engine_number: "N/A",
+          chassis_number: "N/A",
+        },
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const result = apiData.result || apiData;
