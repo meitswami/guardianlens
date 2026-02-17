@@ -65,13 +65,25 @@ serve(async (req) => {
 
     const responseText = await response.text();
     
+    const stateCode = plate_number.replace(/[^A-Za-z]/g, "").substring(0, 2).toUpperCase();
+    const notFoundResponse = () => new Response(JSON.stringify({
+      success: true, mock: true, not_found: true,
+      data: {
+        plate_number, owner_name: "N/A", owner_phone: null, owner_address: "N/A",
+        vehicle_type: "car", vehicle_make: "N/A", vehicle_model: "N/A", vehicle_color: "N/A",
+        registration_date: null, insurance_valid_until: null, fitness_valid_until: null,
+        rto_office: "N/A", state: stateCode, fuel_type: "N/A", engine_number: "N/A", chassis_number: "N/A",
+      },
+    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
     if (!response.ok) {
       console.error("RapidAPI error:", response.status, responseText);
-      throw new Error(`Vehicle lookup failed: ${response.status}`);
+      return notFoundResponse();
     }
 
     if (!responseText || responseText.trim() === "") {
-      throw new Error("Vehicle not found - empty response from RTO API");
+      console.log("Empty response from RTO API for:", plate_number);
+      return notFoundResponse();
     }
 
     let apiData;
@@ -79,7 +91,7 @@ serve(async (req) => {
       apiData = JSON.parse(responseText);
     } catch {
       console.error("Failed to parse RapidAPI response:", responseText.substring(0, 200));
-      throw new Error("Vehicle not found or invalid response from RTO API");
+      return notFoundResponse();
     }
 
     console.log("RapidAPI raw response:", JSON.stringify(apiData));
