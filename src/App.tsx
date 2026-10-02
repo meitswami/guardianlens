@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -23,6 +23,13 @@ import UploadProcess from "./pages/UploadProcess";
 import FinesMaster from "./pages/FinesMaster";
 import Challans from "./pages/Challans";
 import PublicChallan from "./pages/PublicChallan";
+
+// v2 (lives entirely under /v2 — v1 routes above are unchanged)
+import { V2AuthProvider } from "./v2/lib/auth";
+import V2Layout from "./v2/components/V2Layout";
+import V2Login from "./v2/pages/V2Login";
+import V2Overview from "./v2/pages/V2Overview";
+import EvidenceLab from "./v2/pages/EvidenceLab";
 
 const queryClient = new QueryClient();
 
@@ -68,6 +75,15 @@ const App = () => (
                 />
                 <Route path="reports" element={<Reports />} />
                 <Route path="settings" element={<Settings />} />
+              </Route>
+
+              {/* v2 */}
+              <Route path="/v2" element={<V2AuthProvider><Outlet /></V2AuthProvider>}>
+                <Route path="login" element={<V2Login />} />
+                <Route element={<V2Layout />}>
+                  <Route index element={<V2Overview />} />
+                  <Route path="evidence" element={<EvidenceLab />} />
+                </Route>
               </Route>
 
               {/* Catch-all */}
