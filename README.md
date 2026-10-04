@@ -197,10 +197,10 @@ All backend logic runs as serverless edge functions:
 
 | Host | URL |
 |---|---|
-| Vercel | [guardianlens.vercel.app](https://guardianlens.vercel.app) (v2 at [/v2](https://guardianlens.vercel.app/v2)) |
+| Production | [guardianlens.meitcybersolutions.com](https://guardianlens.meitcybersolutions.com/) (v2 at [/v2](https://guardianlens.meitcybersolutions.com/v2)) |
 | Lovable | [guardianlens.lovable.app](https://guardianlens.lovable.app) |
 
-The app is a single-page application, so the host must serve `index.html` for every path. `vercel.json` does this on Vercel. On a VPS, build with `npm run build`, serve `dist/` and add the same fallback, for example in Nginx:
+The app is a single-page application, so the host must serve `index.html` for every path. Build with `npm run build`, serve `dist/` and add this fallback in Nginx:
 
 ```nginx
 location / {
